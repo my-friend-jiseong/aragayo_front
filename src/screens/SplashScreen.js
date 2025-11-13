@@ -1,52 +1,79 @@
-import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { getOrCreateDeviceId, subscribeToDevice } from '../services/deviceService';
 import { subscribeToLatestOpenQuestion } from '../services/questionService';
+import { createDummyData } from '../services/localStorage';
 
 export default function SplashScreen() {
   const dispatch = useDispatch();
   const navigation = useNavigation();
+  const [fadeAnim] = useState(new Animated.Value(0));
+  const [scaleAnim] = useState(new Animated.Value(0.8));
 
   useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     async function initialize() {
       try {
-        // deviceId 가져오기 또는 생성
+        // 더미 데이터 생성
+        await createDummyData();
+        
         const deviceId = await getOrCreateDeviceId();
         dispatch({ type: 'SET_DEVICE_ID', payload: deviceId });
         
-        // Device 구독
-        const unsubscribeDevice = subscribeToDevice(deviceId, (device) => {
+        subscribeToDevice(deviceId, (device) => {
           dispatch({ type: 'SET_DEVICE', payload: device });
         });
 
-        // 최신 질문 구독
-        const unsubscribeQuestion = subscribeToLatestOpenQuestion((question) => {
+        subscribeToLatestOpenQuestion((question) => {
           dispatch({ type: 'SET_CURRENT_QUESTION', payload: question });
         });
 
         dispatch({ type: 'SET_LOADING', payload: false });
-
-        // 홈 화면으로 이동
         navigation.replace('Home');
-        
-        // cleanup 함수는 필요시 추가
       } catch (error) {
         console.error('초기화 오류:', error);
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     }
 
-    initialize();
+    setTimeout(initialize, 1500);
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.icon}>⚖️</Text>
-      <Text style={styles.title}>즉결심판</Text>
-      <ActivityIndicator size="large" color="#0ea5e9" style={styles.loader} />
-    </View>
+    <LinearGradient
+      colors={['#667eea', '#764ba2']}
+      style={styles.container}
+    >
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        <Text style={styles.icon}>⚖️</Text>
+        <Text style={styles.title}>즉결심판</Text>
+        <Text style={styles.subtitle}>10초 안에 결정하세요</Text>
+        <ActivityIndicator size="large" color="#fff" style={styles.loader} />
+      </Animated.View>
+    </LinearGradient>
   );
 }
 
@@ -55,19 +82,31 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+  },
+  content: {
+    alignItems: 'center',
   },
   icon: {
-    fontSize: 100,
-    marginBottom: 20,
+    fontSize: 120,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 32,
+    fontSize: 42,
     fontWeight: 'bold',
-    marginBottom: 40,
+    color: '#fff',
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#fff',
+    opacity: 0.9,
+    marginBottom: 48,
+    fontWeight: '600',
   },
   loader: {
     marginTop: 20,
   },
 });
-

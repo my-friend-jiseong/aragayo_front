@@ -10,6 +10,8 @@ import VoteScreen from './src/screens/VoteScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import QuestionCreateScreen from './src/screens/QuestionCreateScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import HallOfFameScreen from './src/screens/HallOfFameScreen';
+import ShopScreen from './src/screens/ShopScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,12 +34,16 @@ export default function App() {
           initialRouteName="Splash"
           screenOptions={{
             headerStyle: {
-              backgroundColor: '#0ea5e9',
+              backgroundColor: '#667eea',
+              elevation: 0,
+              shadowOpacity: 0,
             },
             headerTintColor: '#fff',
             headerTitleStyle: {
               fontWeight: 'bold',
+              fontSize: 18,
             },
+            headerShadowVisible: false,
           }}
         >
           <Stack.Screen 
@@ -69,6 +75,16 @@ export default function App() {
             name="Profile" 
             component={ProfileScreen}
             options={{ title: '마이페이지' }}
+          />
+          <Stack.Screen 
+            name="HallOfFame" 
+            component={HallOfFameScreen}
+            options={{ title: '명예의 전당' }}
+          />
+          <Stack.Screen 
+            name="Shop" 
+            component={ShopScreen}
+            options={{ title: '상점' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

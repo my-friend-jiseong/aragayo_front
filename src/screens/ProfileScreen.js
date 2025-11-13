@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector } from 'react-redux';
 
 export default function ProfileScreen() {
@@ -13,27 +14,37 @@ export default function ProfileScreen() {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return '로딩 중...';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = new Date(timestamp);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* 프로필 카드 */}
-      <View style={styles.profileCard}>
-        <Text style={styles.profileIcon}>👤</Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* 프로필 카드 - 그라데이션 */}
+      <LinearGradient
+        colors={['#667eea', '#764ba2']}
+        style={styles.profileCard}
+      >
+        <View style={styles.profileIconContainer}>
+          <Text style={styles.profileIcon}>👤</Text>
+        </View>
         <Text style={styles.deviceIdLabel}>기기 ID</Text>
-        <Text style={styles.deviceId}>{deviceId || '로딩 중...'}</Text>
-      </View>
+        <Text style={styles.deviceId} numberOfLines={1} ellipsizeMode="middle">
+          {deviceId || '로딩 중...'}
+        </Text>
+      </LinearGradient>
 
       {/* 통계 카드 */}
       <View style={styles.statsCard}>
-        <Text style={styles.statsTitle}>내 통계</Text>
+        <Text style={styles.statsTitle}>📊 내 통계</Text>
 
         <View style={styles.statRow}>
-          <View style={styles.statIconContainer}>
+          <LinearGradient
+            colors={['#fbbf24', '#f59e0b']}
+            style={styles.statIconContainer}
+          >
             <Text style={styles.statIcon}>⭐</Text>
-          </View>
+          </LinearGradient>
           <View style={styles.statInfo}>
             <Text style={styles.statLabel}>포인트</Text>
           </View>
@@ -43,9 +54,12 @@ export default function ProfileScreen() {
         <View style={styles.divider} />
 
         <View style={styles.statRow}>
-          <View style={styles.statIconContainer}>
+          <LinearGradient
+            colors={['#3b82f6', '#2563eb']}
+            style={styles.statIconContainer}
+          >
             <Text style={styles.statIcon}>🗳️</Text>
-          </View>
+          </LinearGradient>
           <View style={styles.statInfo}>
             <Text style={styles.statLabel}>총 투표 수</Text>
           </View>
@@ -55,9 +69,12 @@ export default function ProfileScreen() {
         <View style={styles.divider} />
 
         <View style={styles.statRow}>
-          <View style={styles.statIconContainer}>
+          <LinearGradient
+            colors={['#10b981', '#059669']}
+            style={styles.statIconContainer}
+          >
             <Text style={styles.statIcon}>✅</Text>
-          </View>
+          </LinearGradient>
           <View style={styles.statInfo}>
             <Text style={styles.statLabel}>총 출석 수</Text>
           </View>
@@ -68,7 +85,7 @@ export default function ProfileScreen() {
       {/* 활동 정보 */}
       {device && (
         <View style={styles.activityCard}>
-          <Text style={styles.activityTitle}>활동 정보</Text>
+          <Text style={styles.activityTitle}>📅 활동 정보</Text>
           <View style={styles.activityRow}>
             <Text style={styles.activityLabel}>가입일</Text>
             <Text style={styles.activityValue}>
@@ -90,52 +107,73 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
+    backgroundColor: '#f8fafc',
+    padding: 20,
   },
   profileCard: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 12,
-    marginBottom: 16,
+    padding: 32,
+    borderRadius: 24,
+    marginBottom: 20,
     alignItems: 'center',
-    elevation: 2,
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  profileIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   profileIcon: {
-    fontSize: 80,
-    marginBottom: 16,
+    fontSize: 50,
   },
   deviceIdLabel: {
     fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    color: '#fff',
+    opacity: 0.9,
+    marginBottom: 8,
+    fontWeight: '600',
   },
   deviceId: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: '#fff',
     textAlign: 'center',
   },
   statsCard: {
     backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 16,
+    padding: 24,
+    borderRadius: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   statsTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
+    color: '#1e293b',
   },
   statRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 16,
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#f0f9ff',
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -148,39 +186,50 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 16,
+    color: '#1e293b',
+    fontWeight: '600',
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#0ea5e9',
+    color: '#3b82f6',
   },
   divider: {
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#e2e8f0',
     marginVertical: 8,
   },
   activityCard: {
     backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   activityTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 20,
+    color: '#1e293b',
   },
   activityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   activityLabel: {
     fontSize: 14,
-    color: '#666',
+    color: '#64748b',
+    fontWeight: '600',
   },
   activityValue: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: '#1e293b',
   },
 });
-

@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { submitVote, hasVoted } from '../services/voteService';
@@ -22,11 +24,31 @@ export default function VoteScreen() {
   const [selectedChoice, setSelectedChoice] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasVotedAlready, setHasVotedAlready] = useState(false);
+  const [pulseAnim] = useState(new Animated.Value(1));
+  const device = useSelector((state) => state.app.device);
 
   useEffect(() => {
     checkVoteStatus();
     startTimer();
+    startPulseAnimation();
   }, []);
+
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
 
   const checkVoteStatus = async () => {
     if (!deviceId) return;
@@ -38,11 +60,12 @@ export default function VoteScreen() {
   };
 
   const startTimer = () => {
-    const interval = setInterval(() => {
+      const interval = setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          if (!hasVotedAlready && !selectedChoice) {
+          // 10초 후 자동으로 결과 화면으로 이동
+          if (!hasVotedAlready) {
             navigation.replace('Result', { questionId: question.questionId });
           }
           return 0;
@@ -57,6 +80,12 @@ export default function VoteScreen() {
   const handleVote = async (choice) => {
     if (isSubmitting || hasVotedAlready || !deviceId) return;
 
+    // 포인트 확인
+    if (device && device.points < AppConstants.votePointCost) {
+      Alert.alert('포인트 부족', `투표하려면 ${AppConstants.votePointCost}P가 필요합니다.\n현재 보유: ${device.points}P`);
+      return;
+    }
+
     setSelectedChoice(choice);
     setIsSubmitting(true);
 
@@ -68,8 +97,10 @@ export default function VoteScreen() {
       });
 
       setHasVotedAlready(true);
-      Alert.alert('성공', '투표 완료! +5 포인트');
-      navigation.replace('Result', { questionId: question.questionId });
+      Alert.alert('성공', `투표 완료! -${AppConstants.votePointCost}P`);
+      
+      // 투표 완료 후 바로 결과 화면으로 이동하지 않고 타이머가 끝날 때까지 대기
+      // 타이머가 끝나면 자동으로 결과 화면으로 이동
     } catch (error) {
       setSelectedChoice(null);
       setIsSubmitting(false);
@@ -77,17 +108,32 @@ export default function VoteScreen() {
     }
   };
 
+  const formatTime = (seconds) => {
+    return `${seconds}초`;
+  };
+
+  const isUrgent = remainingSeconds <= 5; // 마지막 5초
+
   return (
     <View style={styles.container}>
-      {/* 타이머 */}
-      <View style={[styles.timerCard, remainingSeconds <= 5 && styles.timerCardUrgent]}>
-        <Text style={styles.timerLabel}>남은 시간</Text>
-        <Text style={[styles.timerText, remainingSeconds <= 5 && styles.timerTextUrgent]}>
-          {remainingSeconds}초
-        </Text>
-      </View>
+      {/* 타이머 - 그라데이션 */}
+      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+        <LinearGradient
+          colors={isUrgent ? ['#ef4444', '#dc2626'] : ['#3b82f6', '#2563eb']}
+          style={styles.timerCard}
+        >
+          <Text style={styles.timerLabel}>⏱️ 남은 시간</Text>
+          <Text style={styles.timerText}>{formatTime(remainingSeconds)}</Text>
+          {isUrgent && <Text style={styles.urgentText}>서둘러주세요!</Text>}
+          {device && (
+            <Text style={styles.pointInfo}>
+              투표 비용: {AppConstants.votePointCost}P (보유: {device.points}P)
+            </Text>
+          )}
+        </LinearGradient>
+      </Animated.View>
 
-      {/* 질문 */}
+      {/* 질문 카드 */}
       <View style={styles.questionCard}>
         <Text style={styles.questionText}>{question.text}</Text>
       </View>
@@ -97,48 +143,73 @@ export default function VoteScreen() {
         <TouchableOpacity
           style={[
             styles.choiceButton,
-            styles.choiceButtonA,
             selectedChoice === 'A' && styles.choiceButtonSelected,
             (isSubmitting || hasVotedAlready) && styles.buttonDisabled,
           ]}
           onPress={() => handleVote('A')}
           disabled={isSubmitting || hasVotedAlready}
+          activeOpacity={0.8}
         >
-          <Text
-            style={[
-              styles.choiceButtonText,
-              selectedChoice === 'A' && styles.choiceButtonTextSelected,
-            ]}
+          <LinearGradient
+            colors={
+              selectedChoice === 'A'
+                ? ['#3b82f6', '#2563eb']
+                : ['#eff6ff', '#dbeafe']
+            }
+            style={styles.choiceButtonGradient}
           >
-            {question.optionA}
-          </Text>
+            <Text
+              style={[
+                styles.choiceButtonText,
+                selectedChoice === 'A' && styles.choiceButtonTextSelected,
+              ]}
+            >
+              {question.optionA}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
 
-        <Text style={styles.vsText}>VS</Text>
+        <View style={styles.vsContainer}>
+          <View style={styles.vsLine} />
+          <Text style={styles.vsText}>VS</Text>
+          <View style={styles.vsLine} />
+        </View>
 
         <TouchableOpacity
           style={[
             styles.choiceButton,
-            styles.choiceButtonB,
             selectedChoice === 'B' && styles.choiceButtonSelected,
             (isSubmitting || hasVotedAlready) && styles.buttonDisabled,
           ]}
           onPress={() => handleVote('B')}
           disabled={isSubmitting || hasVotedAlready}
+          activeOpacity={0.8}
         >
-          <Text
-            style={[
-              styles.choiceButtonText,
-              selectedChoice === 'B' && styles.choiceButtonTextSelected,
-            ]}
+          <LinearGradient
+            colors={
+              selectedChoice === 'B'
+                ? ['#ef4444', '#dc2626']
+                : ['#fef2f2', '#fee2e2']
+            }
+            style={styles.choiceButtonGradient}
           >
-            {question.optionB}
-          </Text>
+            <Text
+              style={[
+                styles.choiceButtonText,
+                selectedChoice === 'B' && styles.choiceButtonTextSelected,
+              ]}
+            >
+              {question.optionB}
+            </Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
       {isSubmitting && (
-        <ActivityIndicator size="large" color="#0ea5e9" style={styles.loader} />
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loaderText}>투표 처리 중...</Text>
+        </View>
       )}
     </View>
   );
@@ -147,62 +218,90 @@ export default function VoteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
+    backgroundColor: '#f8fafc',
+    padding: 20,
   },
   timerCard: {
-    backgroundColor: '#dbeafe',
-    padding: 20,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 20,
     marginBottom: 24,
     alignItems: 'center',
-  },
-  timerCardUrgent: {
-    backgroundColor: '#fee2e2',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   timerLabel: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.9,
     marginBottom: 8,
+    fontWeight: '600',
   },
   timerText: {
-    fontSize: 48,
+    fontSize: 64,
     fontWeight: 'bold',
-    color: '#0ea5e9',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    fontFamily: 'monospace',
+    letterSpacing: 4,
   },
-  timerTextUrgent: {
-    color: '#ef4444',
+  pointInfo: {
+    fontSize: 12,
+    color: '#fff',
+    opacity: 0.8,
+    marginTop: 8,
+  },
+  urgentText: {
+    fontSize: 12,
+    color: '#fff',
+    marginTop: 8,
+    fontWeight: '600',
   },
   questionCard: {
     backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 12,
-    marginBottom: 40,
-    elevation: 2,
+    padding: 28,
+    borderRadius: 20,
+    marginBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   questionText: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     textAlign: 'center',
+    color: '#1e293b',
+    lineHeight: 36,
   },
   buttonsContainer: {
     flex: 1,
     justifyContent: 'center',
   },
   choiceButton: {
-    padding: 24,
-    borderRadius: 12,
-    marginBottom: 20,
+    borderRadius: 18,
+    marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  choiceButtonGradient: {
+    padding: 28,
     alignItems: 'center',
   },
-  choiceButtonA: {
-    backgroundColor: '#dbeafe',
-  },
-  choiceButtonB: {
-    backgroundColor: '#fee2e2',
-  },
   choiceButtonSelected: {
-    backgroundColor: '#0ea5e9',
+    shadowColor: '#3b82f6',
+    shadowOpacity: 0.4,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -210,20 +309,40 @@ const styles = StyleSheet.create({
   choiceButtonText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0ea5e9',
+    color: '#3b82f6',
   },
   choiceButtonTextSelected: {
     color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  vsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  vsLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#e2e8f0',
   },
   vsText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 20,
+    color: '#94a3b8',
+    marginHorizontal: 16,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 12,
   },
-  loader: {
+  loaderContainer: {
+    alignItems: 'center',
     marginTop: 20,
   },
+  loaderText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '600',
+  },
 });
-

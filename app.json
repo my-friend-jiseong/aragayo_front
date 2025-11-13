@@ -29,9 +29,6 @@
         "ACCESS_COARSE_LOCATION"
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
     "plugins": [
       [
         "expo-location",

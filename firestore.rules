@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // devices 컬렉션 - 읽기는 모든 사용자, 쓰기는 본인만
+    match /devices/{deviceId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // questions 컬렉션 - 읽기는 모든 사용자, 쓰기는 인증된 사용자만
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if false; // Cloud Function에서만 업데이트
+      allow delete: if false;
+    }
+    
+    // votes 컬렉션 - 읽기는 모든 사용자, 쓰기는 Cloud Function에서만
+    match /votes/{voteId} {
+      allow read: if true;
+      allow write: if false; // Cloud Function에서만 생성
+    }
+    
+    // checkins 컬렉션 - 읽기는 본인만, 쓰기는 Cloud Function에서만
+    match /checkins/{checkinId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Cloud Function에서만 생성
+    }
+  }
+}
+

@@ -14,7 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { subscribeToQuestion } from '../services/questionService';
-import { verifyQuestion } from '../services/localStorage';
+import { verifyQuestion } from '../services/questionService';
 import { AppConstants } from '../utils/constants';
 
 export default function ResultScreen() {
@@ -99,12 +99,18 @@ export default function ResultScreen() {
 
     setIsVerifying(true);
     try {
-      await verifyQuestion(questionId, imageUri, deviceId);
+      // verifyQuestion이 업데이트된 디바이스를 반환
+      const updatedDevice = await verifyQuestion(questionId, imageUri, deviceId);
       
-      // 디바이스 정보 다시 로드하여 포인트 업데이트
-      const { getDevice } = await import('../services/deviceService');
-      const updatedDevice = await getDevice(deviceId);
-      dispatch({ type: 'SET_DEVICE', payload: updatedDevice });
+      if (updatedDevice) {
+        dispatch({ type: 'SET_DEVICE', payload: updatedDevice });
+        console.log('인증 후 포인트:', updatedDevice.points);
+      } else {
+        // 폴백: 디바이스 정보 다시 로드
+        const { getDevice } = await import('../services/deviceService');
+        const device = await getDevice(deviceId);
+        dispatch({ type: 'SET_DEVICE', payload: device });
+      }
       
       // 질문 다시 로드
       const updatedQuestion = await import('../services/localStorage').then(m => 

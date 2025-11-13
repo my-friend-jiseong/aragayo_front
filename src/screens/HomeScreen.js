@@ -11,7 +11,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { submitCheckin, hasCheckedInToday } from '../services/checkinService';
-import { isWithinCampus } from '../services/locationService';
 import { getLatestOpenQuestion, getHotVotes } from '../services/questionService';
 import { AppConstants } from '../utils/constants';
 
@@ -49,16 +48,21 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  const [hasCheckedIn, setHasCheckedIn] = useState(false);
+  const [hasCheckedIn, setHasCheckedIn] = useState(true); // 기본값을 true로 설정 (자동 출석)
 
   useEffect(() => {
     checkCheckinStatus();
-  }, [deviceId]);
+    // 디바이스 정보가 변경될 때마다 출석 상태 확인
+    if (device) {
+      checkCheckinStatus();
+    }
+  }, [deviceId, device]);
 
   const checkCheckinStatus = async () => {
     if (!deviceId) return;
     const checkedIn = await hasCheckedInToday(deviceId);
     setHasCheckedIn(checkedIn);
+    console.log('출석 상태 확인:', checkedIn);
   };
 
   const handleCheckin = async () => {
@@ -66,25 +70,14 @@ export default function HomeScreen() {
 
     setIsCheckingIn(true);
     try {
-      // 위치 확인 (웹에서는 자동으로 통과)
-      try {
-        const withinCampus = await isWithinCampus();
-        if (!withinCampus) {
-          Alert.alert('알림', '캠퍼스 범위 내에 있지 않습니다.');
-          setIsCheckingIn(false);
-          return;
-        }
-      } catch (locationError) {
-        // 위치 확인 실패 시에도 진행 (웹 환경 대응)
-        console.log('위치 확인 실패, 계속 진행:', locationError);
-      }
-
+      // 오늘 이미 출석했는지 확인 (날짜 기반)
       if (hasCheckedIn) {
         Alert.alert('알림', '오늘 이미 출석했습니다.');
         setIsCheckingIn(false);
         return;
       }
 
+      // GPS 검증 없이 바로 출석 처리
       const updatedDevice = await submitCheckin(deviceId);
       setHasCheckedIn(true);
       

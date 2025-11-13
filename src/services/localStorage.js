@@ -12,34 +12,94 @@ const STORAGE_KEYS = {
 export const getOrCreateDeviceId = async () => {
     try {
         let deviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
+        console.log('[웹 디버그] deviceId:', deviceId);
 
         if (!deviceId) {
             deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
+            console.log('[웹 디버그] 새 deviceId 생성:', deviceId);
 
-            // Device 생성
+            // Device 생성 (시작 포인트 200)
             const devices = await getDevices();
             devices[deviceId] = {
                 deviceId,
-                points: 0,
+                points: 200,
                 totalVotes: 0,
                 totalCheckins: 0,
                 createdAt: new Date().toISOString(),
                 lastActiveAt: new Date().toISOString(),
             };
             await saveDevices(devices);
+            console.log('[웹 디버그] 새 디바이스 생성 완료, 포인트:', devices[deviceId].points);
         } else {
-            // lastActiveAt 업데이트
+            // 기존 디바이스: 자동 출석 처리
             const devices = await getDevices();
+            console.log('[웹 디버그] 기존 디바이스 로드:', devices[deviceId]);
+
             if (devices[deviceId]) {
                 devices[deviceId].lastActiveAt = new Date().toISOString();
+
+                // 오늘 출석하지 않았으면 자동 출석
+                const today = new Date().toISOString().split('T')[0];
+                console.log('[웹 디버그] 오늘 날짜:', today);
+
+                const checkins = await getCheckins();
+                const hasCheckedInToday = Object.values(checkins).some(
+                    checkin => checkin.deviceId === deviceId && checkin.date === today
+                );
+                console.log('[웹 디버그] 오늘 출석 여부:', hasCheckedInToday);
+
+                if (!hasCheckedInToday) {
+                    // 자동 출석 처리
+                    const checkinId = `checkin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    checkins[checkinId] = {
+                        checkinId,
+                        deviceId,
+                        date: today,
+                        locationType: 'campus',
+                        createdAt: new Date().toISOString(),
+                    };
+                    await saveCheckins(checkins);
+                    console.log('[웹 디버그] 출석 기록 저장 완료');
+
+                    // 포인트 추가 (100점) - updateDevice 사용하여 안전하게 업데이트
+                    const { checkinPointReward } = await import('../utils/constants');
+                    const currentPoints = devices[deviceId].points || 0;
+                    console.log('[웹 디버그] 현재 포인트:', currentPoints, '추가할 포인트:', checkinPointReward);
+
+                    await updateDevice(deviceId, {
+                        points: currentPoints + checkinPointReward,
+                        totalCheckins: (devices[deviceId].totalCheckins || 0) + 1,
+                        lastActiveAt: new Date().toISOString(),
+                    });
+
+                    // 업데이트된 디바이스 확인
+                    const updatedDevice = await getDevice(deviceId);
+                    console.log('[웹 디버그] 자동 출석 완료:', currentPoints, '->', updatedDevice?.points);
+                } else {
+                    // 이미 출석했으면 디바이스 정보만 저장
+                    await saveDevices(devices);
+                    console.log('[웹 디버그] 이미 출석함, 포인트:', devices[deviceId].points);
+                }
+            } else {
+                // 디바이스가 없으면 새로 생성 (시작 포인트 200)
+                console.log('[웹 디버그] 디바이스 정보 없음, 새로 생성');
+                devices[deviceId] = {
+                    deviceId,
+                    points: 200,
+                    totalVotes: 0,
+                    totalCheckins: 0,
+                    createdAt: new Date().toISOString(),
+                    lastActiveAt: new Date().toISOString(),
+                };
                 await saveDevices(devices);
+                console.log('[웹 디버그] 새 디바이스 생성 완료, 포인트: 200');
             }
         }
 
         return deviceId;
     } catch (error) {
-        console.error('DeviceId 가져오기 오류:', error);
+        console.error('[웹 디버그] DeviceId 가져오기 오류:', error);
         throw error;
     }
 };
@@ -59,14 +119,20 @@ export const saveDevices = async (devices) => {
 
 export const getDevice = async (deviceId) => {
     const devices = await getDevices();
-    return devices[deviceId] || null;
+    const device = devices[deviceId] || null;
+    console.log('[웹 디버그] getDevice:', deviceId, '->', device?.points, '포인트');
+    return device;
 };
 
 export const updateDevice = async (deviceId, updates) => {
     const devices = await getDevices();
     if (devices[deviceId]) {
+        const oldPoints = devices[deviceId].points;
         devices[deviceId] = { ...devices[deviceId], ...updates };
         await saveDevices(devices);
+        console.log('[웹 디버그] updateDevice:', deviceId, oldPoints, '->', devices[deviceId].points, '포인트');
+    } else {
+        console.warn('[웹 디버그] updateDevice: 디바이스를 찾을 수 없음:', deviceId);
     }
 };
 
@@ -171,13 +237,19 @@ export const verifyQuestion = async (questionId, imageUri, deviceId) => {
 
     // 질문 작성자에게 포인트 지급
     const device = await getDevice(deviceId);
-    if (device) {
-        const { verificationPointReward } = await import('../utils/constants');
-        await updateDevice(deviceId, {
-            points: device.points + verificationPointReward,
-            lastActiveAt: new Date().toISOString(),
-        });
+    if (!device) {
+        throw new Error('기기 정보를 찾을 수 없습니다.');
     }
+
+    const { verificationPointReward } = await import('../utils/constants');
+    await updateDevice(deviceId, {
+        points: (device.points || 0) + verificationPointReward,
+        lastActiveAt: new Date().toISOString(),
+    });
+
+    // 업데이트된 디바이스 정보 반환
+    const updatedDevice = await getDevice(deviceId);
+    return updatedDevice;
 };
 
 // 명예의 전당 (하루 최고 투표율 질문)
@@ -297,10 +369,15 @@ export const submitVote = async ({ questionId, deviceId, choice }) => {
 
     // Device 포인트 차감
     await updateDevice(deviceId, {
-        points: device.points - votePointCost,
-        totalVotes: device.totalVotes + 1,
+        points: (device.points || 0) - votePointCost,
+        totalVotes: (device.totalVotes || 0) + 1,
         lastActiveAt: new Date().toISOString(),
     });
+
+    // 업데이트된 디바이스 정보 반환
+    const updatedDevice = await getDevice(deviceId);
+    console.log('투표 포인트 차감:', device.points, '->', updatedDevice?.points);
+    return updatedDevice;
 };
 
 // Checkin 관리
@@ -442,13 +519,14 @@ export const submitCheckin = async (deviceId) => {
 
     const { checkinPointReward } = await import('../utils/constants');
     await updateDevice(deviceId, {
-        points: device.points + checkinPointReward,
+        points: (device.points || 0) + checkinPointReward,
         totalCheckins: (device.totalCheckins || 0) + 1,
         lastActiveAt: new Date().toISOString(),
     });
 
     // 업데이트된 디바이스 정보 반환
     const updatedDevice = await getDevice(deviceId);
+    console.log('출석 포인트 업데이트:', device.points, '->', updatedDevice?.points);
     return updatedDevice;
 };
 

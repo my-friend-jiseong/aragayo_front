@@ -34,10 +34,17 @@ export default function SplashScreen() {
         const deviceId = await getOrCreateDeviceId();
         dispatch({ type: 'SET_DEVICE_ID', payload: deviceId });
         
-        // 디바이스 정보 로드
+        // 디바이스 정보 로드 (자동 출석 후 업데이트된 정보)
         const { getDevice } = await import('../services/deviceService');
+        // 약간의 지연을 주어 자동 출석 처리가 완료되도록 함 (웹 환경에서 AsyncStorage 동기화 대기)
+        await new Promise(resolve => setTimeout(resolve, 200));
         const device = await getDevice(deviceId);
-        dispatch({ type: 'SET_DEVICE', payload: device });
+        if (device) {
+          console.log('[웹 디버그] SplashScreen 디바이스 로드:', device.points, '포인트');
+          dispatch({ type: 'SET_DEVICE', payload: device });
+        } else {
+          console.warn('[웹 디버그] SplashScreen: 디바이스를 찾을 수 없음');
+        }
         
         // 최신 질문 로드
         const { getLatestOpenQuestion } = await import('../services/questionService');

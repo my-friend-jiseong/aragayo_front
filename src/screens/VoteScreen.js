@@ -91,7 +91,8 @@ export default function VoteScreen() {
     setIsSubmitting(true);
 
     try {
-      await submitVote({
+      // submitVote가 업데이트된 디바이스를 반환
+      const updatedDevice = await submitVote({
         questionId: question.questionId,
         deviceId,
         choice,
@@ -99,10 +100,15 @@ export default function VoteScreen() {
 
       setHasVotedAlready(true);
       
-      // 디바이스 정보 다시 로드하여 포인트 업데이트
-      const { getDevice } = await import('../services/deviceService');
-      const updatedDevice = await getDevice(deviceId);
-      dispatch({ type: 'SET_DEVICE', payload: updatedDevice });
+      if (updatedDevice) {
+        dispatch({ type: 'SET_DEVICE', payload: updatedDevice });
+        console.log('투표 후 포인트:', updatedDevice.points);
+      } else {
+        // 폴백: 디바이스 정보 다시 로드
+        const { getDevice } = await import('../services/deviceService');
+        const device = await getDevice(deviceId);
+        dispatch({ type: 'SET_DEVICE', payload: device });
+      }
       
       Alert.alert('성공', `투표 완료! -${AppConstants.votePointCost}P`);
       

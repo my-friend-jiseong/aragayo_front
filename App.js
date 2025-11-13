@@ -12,6 +12,7 @@ import QuestionCreateScreen from './src/screens/QuestionCreateScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import HallOfFameScreen from './src/screens/HallOfFameScreen';
 import ShopScreen from './src/screens/ShopScreen';
+import HotVotesScreen from './src/screens/HotVotesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -75,6 +76,11 @@ export default function App() {
             name="Profile" 
             component={ProfileScreen}
             options={{ title: '마이페이지' }}
+          />
+          <Stack.Screen 
+            name="HotVotes" 
+            component={HotVotesScreen}
+            options={{ title: '핫 투표' }}
           />
           <Stack.Screen 
             name="HallOfFame" 

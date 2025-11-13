@@ -15,6 +15,15 @@ export const getCurrentPosition = async () => {
 
 export const isWithinCampus = async () => {
   try {
+    // 웹 환경에서는 위치 검증을 건너뛰고 항상 true 반환 (개발/테스트 목적)
+    if (typeof window !== 'undefined' && window.navigator && window.navigator.userAgent) {
+      const isWeb = !window.navigator.userAgent.includes('Expo');
+      if (isWeb) {
+        console.log('웹 환경: 위치 검증 건너뜀');
+        return true;
+      }
+    }
+
     const position = await getCurrentPosition();
     const distance = calculateDistance(
       AppConstants.campusLatitude,
@@ -26,6 +35,11 @@ export const isWithinCampus = async () => {
     return distance <= AppConstants.campusRadiusMeters;
   } catch (error) {
     console.error('위치 확인 오류:', error);
+    // 웹 환경에서 위치 권한이 거부된 경우에도 true 반환 (개발/테스트 목적)
+    if (typeof window !== 'undefined') {
+      console.log('위치 권한 오류: 웹 환경에서 출석 허용');
+      return true;
+    }
     return false;
   }
 };

@@ -12,7 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { subscribeToQuestion } from '../services/questionService';
 import { verifyQuestion } from '../services/localStorage';
 import { AppConstants } from '../utils/constants';
@@ -22,6 +22,7 @@ export default function ResultScreen() {
   const route = useRoute();
   const { questionId } = route.params;
   const deviceId = useSelector((state) => state.app.deviceId);
+  const dispatch = useDispatch();
   const [question, setQuestion] = useState(null);
   const [animatedA] = useState(new Animated.Value(0));
   const [animatedB] = useState(new Animated.Value(0));
@@ -99,12 +100,19 @@ export default function ResultScreen() {
     setIsVerifying(true);
     try {
       await verifyQuestion(questionId, imageUri, deviceId);
-      Alert.alert('성공', '인증 완료! +100 포인트');
+      
+      // 디바이스 정보 다시 로드하여 포인트 업데이트
+      const { getDevice } = await import('../services/deviceService');
+      const updatedDevice = await getDevice(deviceId);
+      dispatch({ type: 'SET_DEVICE', payload: updatedDevice });
+      
       // 질문 다시 로드
       const updatedQuestion = await import('../services/localStorage').then(m => 
         m.getQuestion(questionId)
       );
       setQuestion(updatedQuestion);
+      
+      Alert.alert('성공', '인증 완료! +100 포인트');
     } catch (error) {
       Alert.alert('오류', error.message);
     } finally {

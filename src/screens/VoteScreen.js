@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { submitVote, hasVoted } from '../services/voteService';
 import { AppConstants } from '../utils/constants';
 
@@ -19,6 +19,7 @@ export default function VoteScreen() {
   const route = useRoute();
   const { question } = route.params;
   const deviceId = useSelector((state) => state.app.deviceId);
+  const dispatch = useDispatch();
 
   const [remainingSeconds, setRemainingSeconds] = useState(AppConstants.voteTimerSeconds);
   const [selectedChoice, setSelectedChoice] = useState(null);
@@ -97,6 +98,12 @@ export default function VoteScreen() {
       });
 
       setHasVotedAlready(true);
+      
+      // 디바이스 정보 다시 로드하여 포인트 업데이트
+      const { getDevice } = await import('../services/deviceService');
+      const updatedDevice = await getDevice(deviceId);
+      dispatch({ type: 'SET_DEVICE', payload: updatedDevice });
+      
       Alert.alert('성공', `투표 완료! -${AppConstants.votePointCost}P`);
       
       // 투표 완료 후 바로 결과 화면으로 이동하지 않고 타이머가 끝날 때까지 대기

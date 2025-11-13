@@ -12,7 +12,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { submitCheckin, hasCheckedInToday } from '../services/checkinService';
 import { isWithinCampus } from '../services/locationService';
-import { subscribeToLatestOpenQuestion } from '../services/questionService';
+import { getLatestOpenQuestion, getHotVotes } from '../services/questionService';
 import { AppConstants } from '../utils/constants';
 
 export default function HomeScreen() {
@@ -23,15 +23,31 @@ export default function HomeScreen() {
   const deviceId = useSelector((state) => state.app.deviceId);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [hotVote, setHotVote] = useState(null);
 
-  // 카테고리 변경 시 질문 다시 로드
+  // 카테고리 변경 시 질문 다시 로드 (폴링 제거, 변경 시에만 로드)
   useEffect(() => {
-    const unsubscribe = subscribeToLatestOpenQuestion((question) => {
+    const loadQuestion = async () => {
+      const { getLatestOpenQuestion } = await import('../services/questionService');
+      const question = await getLatestOpenQuestion(selectedCategory);
       dispatch({ type: 'SET_CURRENT_QUESTION', payload: question });
-    }, selectedCategory);
+    };
+    
+    loadQuestion();
+  }, [selectedCategory, dispatch]);
 
-    return unsubscribe;
-  }, [selectedCategory]);
+  // 핫한 투표 로드
+  useEffect(() => {
+    const loadHotVote = async () => {
+      const votes = await getHotVotes(1);
+      if (votes && votes.length > 0) {
+        setHotVote(votes[0]);
+      }
+    };
+    loadHotVote();
+    const interval = setInterval(loadHotVote, 10000); // 10초마다 갱신
+    return () => clearInterval(interval);
+  }, []);
 
   const [hasCheckedIn, setHasCheckedIn] = useState(false);
 
@@ -50,21 +66,42 @@ export default function HomeScreen() {
 
     setIsCheckingIn(true);
     try {
-      const withinCampus = await isWithinCampus();
-      if (!withinCampus) {
-        Alert.alert('알림', '캠퍼스 범위 내에 있지 않습니다.');
-        return;
+      // 위치 확인 (웹에서는 자동으로 통과)
+      try {
+        const withinCampus = await isWithinCampus();
+        if (!withinCampus) {
+          Alert.alert('알림', '캠퍼스 범위 내에 있지 않습니다.');
+          setIsCheckingIn(false);
+          return;
+        }
+      } catch (locationError) {
+        // 위치 확인 실패 시에도 진행 (웹 환경 대응)
+        console.log('위치 확인 실패, 계속 진행:', locationError);
       }
 
       if (hasCheckedIn) {
         Alert.alert('알림', '오늘 이미 출석했습니다.');
+        setIsCheckingIn(false);
         return;
       }
 
-      await submitCheckin(deviceId);
+      const updatedDevice = await submitCheckin(deviceId);
       setHasCheckedIn(true);
+      
+      // Redux store에 업데이트된 디바이스 정보 반영
+      if (updatedDevice) {
+        dispatch({ type: 'SET_DEVICE', payload: updatedDevice });
+        console.log('포인트 업데이트:', updatedDevice.points);
+      } else {
+        // 폴백: 디바이스 정보 다시 로드
+        const { getDevice } = await import('../services/deviceService');
+        const device = await getDevice(deviceId);
+        dispatch({ type: 'SET_DEVICE', payload: device });
+      }
+      
       Alert.alert('성공', '출석 완료! +100 포인트');
     } catch (error) {
+      console.error('출석 오류:', error);
       Alert.alert('오류', `출석 실패: ${error.message}`);
     } finally {
       setIsCheckingIn(false);
@@ -163,6 +200,41 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
+      {/* 지금 핫한 투표 */}
+      {hotVote && hotVote.questionId !== currentQuestion?.questionId && (
+        <TouchableOpacity
+          style={styles.hotVoteCard}
+          onPress={() => navigation.navigate('Vote', { question: hotVote })}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#ef4444', '#dc2626']}
+            style={styles.hotVoteGradient}
+          >
+            <View style={styles.hotVoteHeader}>
+              <Text style={styles.hotVoteIcon}>🔥</Text>
+              <Text style={styles.hotVoteTitle}>지금 핫한 투표</Text>
+            </View>
+            <Text style={styles.hotVoteText} numberOfLines={2}>
+              {hotVote.text}
+            </Text>
+            <View style={styles.hotVoteFooter}>
+              <View style={styles.hotVoteBadge}>
+                <Text style={styles.hotVoteBadgeIcon}>
+                  {getCategoryIcon(hotVote.category)}
+                </Text>
+                <Text style={styles.hotVoteBadgeText}>
+                  {getCategoryName(hotVote.category)}
+                </Text>
+              </View>
+              <Text style={styles.hotVoteCount}>
+                {hotVote.totalVotes || 0}명 투표
+              </Text>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
       {/* 현재 질문 */}
       {currentQuestion ? (
         <View style={styles.questionCard}>
@@ -236,6 +308,42 @@ export default function HomeScreen() {
         <Text style={styles.createQuestionIcon}>✏️</Text>
         <Text style={styles.createQuestionButtonText}>새 고민 작성하기</Text>
       </TouchableOpacity>
+
+      {/* 하단 메뉴 */}
+      <View style={styles.bottomMenu}>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('HotVotes')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.menuIcon}>🔥</Text>
+          <Text style={styles.menuText}>핫 투표</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('HallOfFame')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.menuIcon}>🏆</Text>
+          <Text style={styles.menuText}>명예의 전당</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('Shop')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.menuIcon}>🛍️</Text>
+          <Text style={styles.menuText}>상점</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('Profile')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.menuIcon}>👤</Text>
+          <Text style={styles.menuText}>마이페이지</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -548,6 +656,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: '#e2e8f0',
+    justifyContent: 'space-around',
   },
   menuItem: {
     flex: 1,
@@ -562,5 +671,75 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748b',
     fontWeight: '600',
+  },
+  hotVoteCard: {
+    borderRadius: 20,
+    marginBottom: 20,
+    overflow: 'hidden',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hotVoteGradient: {
+    padding: 20,
+  },
+  hotVoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  hotVoteIcon: {
+    fontSize: 24,
+  },
+  hotVoteTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  hotVoteText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 12,
+    lineHeight: 22,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  hotVoteFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  hotVoteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  hotVoteBadgeIcon: {
+    fontSize: 14,
+  },
+  hotVoteBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  hotVoteCount: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

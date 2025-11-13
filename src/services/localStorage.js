@@ -209,6 +209,28 @@ export const getHallOfFame = async () => {
     return hallOfFame;
 };
 
+// 지금 핫한 투표 (현재 진행 중인 투표 중 가장 많은 투표를 받은 것)
+export const getHotVotes = async (limit = 5) => {
+    const questions = await getQuestions();
+    const openQuestions = Object.values(questions)
+        .filter(q => q.status === 'OPEN' && q.totalVotes > 0)
+        .sort((a, b) => b.totalVotes - a.totalVotes)
+        .slice(0, limit);
+
+    return openQuestions;
+};
+
+// 가장 핫했던 투표들 (과거 포함, 전체 중 가장 많은 투표를 받은 것들)
+export const getAllTimeHotVotes = async (limit = 10) => {
+    const questions = await getQuestions();
+    const allQuestions = Object.values(questions)
+        .filter(q => q.totalVotes > 0)
+        .sort((a, b) => b.totalVotes - a.totalVotes)
+        .slice(0, limit);
+
+    return allQuestions;
+};
+
 // Vote 관리
 export const getVotes = async () => {
     try {
@@ -414,13 +436,19 @@ export const submitCheckin = async (deviceId) => {
 
     // Device 포인트 증가 (100점)
     const device = await getDevice(deviceId);
-    if (device) {
-        const { checkinPointReward } = await import('../utils/constants');
-        await updateDevice(deviceId, {
-            points: device.points + checkinPointReward,
-            totalCheckins: device.totalCheckins + 1,
-            lastActiveAt: new Date().toISOString(),
-        });
+    if (!device) {
+        throw new Error('기기 정보를 찾을 수 없습니다.');
     }
+
+    const { checkinPointReward } = await import('../utils/constants');
+    await updateDevice(deviceId, {
+        points: device.points + checkinPointReward,
+        totalCheckins: (device.totalCheckins || 0) + 1,
+        lastActiveAt: new Date().toISOString(),
+    });
+
+    // 업데이트된 디바이스 정보 반환
+    const updatedDevice = await getDevice(deviceId);
+    return updatedDevice;
 };
 

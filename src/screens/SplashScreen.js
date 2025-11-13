@@ -3,8 +3,7 @@ import { View, Text, ActivityIndicator, StyleSheet, Animated } from 'react-nativ
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
-import { getOrCreateDeviceId, subscribeToDevice } from '../services/deviceService';
-import { subscribeToLatestOpenQuestion } from '../services/questionService';
+import { getOrCreateDeviceId } from '../services/deviceService';
 import { createDummyData } from '../services/localStorage';
 
 export default function SplashScreen() {
@@ -35,13 +34,15 @@ export default function SplashScreen() {
         const deviceId = await getOrCreateDeviceId();
         dispatch({ type: 'SET_DEVICE_ID', payload: deviceId });
         
-        subscribeToDevice(deviceId, (device) => {
-          dispatch({ type: 'SET_DEVICE', payload: device });
-        });
-
-        subscribeToLatestOpenQuestion((question) => {
-          dispatch({ type: 'SET_CURRENT_QUESTION', payload: question });
-        });
+        // 디바이스 정보 로드
+        const { getDevice } = await import('../services/deviceService');
+        const device = await getDevice(deviceId);
+        dispatch({ type: 'SET_DEVICE', payload: device });
+        
+        // 최신 질문 로드
+        const { getLatestOpenQuestion } = await import('../services/questionService');
+        const question = await getLatestOpenQuestion('all');
+        dispatch({ type: 'SET_CURRENT_QUESTION', payload: question });
 
         dispatch({ type: 'SET_LOADING', payload: false });
         navigation.replace('Home');

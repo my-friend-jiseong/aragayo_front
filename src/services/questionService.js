@@ -7,6 +7,8 @@ export const getQuestion = localStorage.getQuestion;
 export const getOpenQuestionsByCategory = localStorage.getOpenQuestionsByCategory;
 export const verifyQuestion = localStorage.verifyQuestion;
 export const getHallOfFame = localStorage.getHallOfFame;
+export const getHotVotes = localStorage.getHotVotes;
+export const getAllTimeHotVotes = localStorage.getAllTimeHotVotes;
 
 export const subscribeToLatestOpenQuestion = (callback, category = 'all') => {
   // 간단한 폴링 방식

@@ -10,12 +10,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { createQuestion } from '../services/questionService';
 import { AppConstants } from '../utils/constants';
 
 export default function QuestionCreateScreen() {
   const navigation = useNavigation();
+  const dispatch = useDispatch();
   const deviceId = useSelector((state) => state.app.deviceId);
 
   const [questionType, setQuestionType] = useState(AppConstants.questionTypeYesNo);
@@ -59,6 +60,11 @@ export default function QuestionCreateScreen() {
         deviceId,
         category,
       });
+
+      // 홈 화면의 질문 목록 업데이트를 위해 질문 다시 로드
+      const { getLatestOpenQuestion } = await import('../services/questionService');
+      const updatedQuestion = await getLatestOpenQuestion('all');
+      dispatch({ type: 'SET_CURRENT_QUESTION', payload: updatedQuestion });
 
       Alert.alert('성공', '고민이 등록되었습니다!');
       navigation.goBack();

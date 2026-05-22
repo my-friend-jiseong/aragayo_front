@@ -22,16 +22,33 @@ export interface Course {
 }
 
 export const MOCK_CONCEPTS: Concept[] = [
-  // 동아대학교 컴퓨터공학과 주요 과목 (Nodes)
-  { id: 'c-programming', label: 'C프로그래밍', group: 'subject', description: '컴퓨터공학의 기초가 되는 프로그래밍 언어', wikiUrl: 'https://ko.wikipedia.org/wiki/C_(프로그래밍_언어)' },
-  { id: 'data-structures', label: '자료구조', group: 'subject', description: '데이터를 효율적으로 저장하고 관리하는 방법', wikiUrl: 'https://ko.wikipedia.org/wiki/자료_구조' },
-  { id: 'algorithms', label: '알고리즘 분석', group: 'subject', description: '문제 해결을 위한 절차와 효율성 분석 방법론', wikiUrl: 'https://ko.wikipedia.org/wiki/알고리즘' },
-  { id: 'operating-systems', label: '운영체제', group: 'subject', description: '컴퓨터 하드웨어와 소프트웨어 자원 관리 시스템', wikiUrl: 'https://ko.wikipedia.org/wiki/운영_체제' },
-  { id: 'computer-architecture', label: '컴퓨터구조', group: 'subject', description: '컴퓨터 시스템의 설계 및 하드웨어 구성', wikiUrl: 'https://ko.wikipedia.org/wiki/컴퓨터_구조' },
-  { id: 'database', label: '데이터베이스', group: 'subject', description: '데이터의 체계적인 저장, 관리 및 검색 시스템', wikiUrl: 'https://ko.wikipedia.org/wiki/데이터베이스' },
-  { id: 'network', label: '컴퓨터네트워크', group: 'subject', description: '데이터 통신 프로토콜과 네트워크 아키텍처', wikiUrl: 'https://ko.wikipedia.org/wiki/컴퓨터_네트워크' },
-  { id: 'ai', label: '인공지능', group: 'subject', description: '머신러닝 및 지능형 시스템 구현 기법', wikiUrl: 'https://ko.wikipedia.org/wiki/인공지능' },
-  { id: 'software-engineering', label: '소프트웨어공학', group: 'subject', description: '체계적인 소프트웨어 개발 및 관리 방법론', wikiUrl: 'https://ko.wikipedia.org/wiki/소프트웨어_공학' },
+  // subject group (from subject.txt)
+  { id: 'python-programming', label: 'Python프로그래밍', group: 'subject', description: '1학년 과목' },
+  { id: 'linux-system', label: 'LinuxSystem', group: 'subject', description: '1학년 과목' },
+  { id: 'data-structures', label: '데이터구조', group: 'subject', description: '2학년 과목' },
+  { id: 'computer-architecture', label: '컴퓨터구조', group: 'subject', description: '2학년 과목' },
+  { id: 'algorithms', label: '알고리즘', group: 'subject', description: '3학년 과목' },
+  { id: 'oss-development', label: 'OSS개발', group: 'subject', description: '2학년 과목' },
+  { id: 'oop', label: '객체지향프로그래밍', group: 'subject', description: '2학년 과목' },
+  { id: 'web-programming', label: '웹프로그래밍', group: 'subject', description: '2학년 과목' },
+  { id: 'programming-languages', label: '프로그래밍언어론', group: 'subject', description: '3학년 과목' },
+  { id: 'database', label: '데이터베이스', group: 'subject', description: '2학년 과목' },
+  { id: 'computer-networks', label: '컴퓨터네트워크', group: 'subject', description: '2학년 과목' },
+  { id: 'operating-systems', label: '운영체제', group: 'subject', description: '3학년 과목' },
+  { id: 'compiler', label: '컴파일러', group: 'subject', description: '3학년 과목' },
+  { id: 'software-engineering', label: '소프트웨어공학', group: 'subject', description: '3학년 과목' },
+  { id: 'machine-learning-course', label: '머신러닝', group: 'subject', description: '2학년 과목' },
+  { id: 'information-security', label: '정보보호', group: 'subject', description: '4학년 과목' },
+  { id: 'computer-graphics', label: '컴퓨터그래픽스', group: 'subject', description: '3학년 과목' },
+  { id: 'virtual-reality', label: '가상현실', group: 'subject', description: '3학년 과목' },
+  { id: 'deep-learning', label: '딥러닝', group: 'subject', description: '3학년 과목' },
+  { id: 'big-data-analysis', label: '빅데이터분석', group: 'subject', description: '3학년 과목' },
+  { id: 'mobile-programming', label: '모바일프로그래밍', group: 'subject', description: '4학년 과목' },
+  { id: 'distributed-processing', label: '분산처리', group: 'subject', description: '4학년 과목' },
+  { id: 'computer-vision', label: '컴퓨터비전', group: 'subject', description: '4학년 과목' },
+  { id: 'data-mining', label: '데이터마이닝', group: 'subject', description: '4학년 과목' },
+  { id: 'image-processing', label: '영상처리', group: 'subject', description: '4학년 과목' },
+  { id: 'latest-ce-tech', label: '최신CE기술', group: 'subject', description: '4학년 과목' },
 
   // 위키피디아 기반 핵심 개념 (Intermediate Nodes)
   { id: 'pointer', label: '포인터', group: 'core-concept', wikiUrl: 'https://ko.wikipedia.org/wiki/포인터_(프로그래밍)' },
@@ -49,15 +66,15 @@ export const MOCK_CONCEPTS: Concept[] = [
 ];
 
 export const MOCK_LINKS: Link[] = [
-  { source: 'c-programming', target: 'pointer', value: 3 },
+  { source: 'python-programming', target: 'pointer', value: 3 },
   { source: 'pointer', target: 'memory-management', value: 2 },
   { source: 'memory-management', target: 'data-structures', value: 3 },
   { source: 'data-structures', target: 'linked-list', value: 2 },
   { source: 'linked-list', target: 'stack-queue', value: 2 },
   { source: 'stack-queue', target: 'algorithms', value: 3 },
   { source: 'algorithms', target: 'sorting', value: 3 },
-  { source: 'sorting', target: 'ai', value: 2 },
-  { source: 'c-programming', target: 'computer-architecture', value: 2 },
+  { source: 'sorting', target: 'machine-learning-course', value: 2 },
+  { source: 'python-programming', target: 'computer-architecture', value: 2 },
   { source: 'computer-architecture', target: 'process-thread', value: 3 },
   { source: 'process-thread', target: 'operating-systems', value: 3 },
   { source: 'operating-systems', target: 'deadlock', value: 2 },
@@ -65,9 +82,9 @@ export const MOCK_LINKS: Link[] = [
   { source: 'virtual-memory', target: 'computer-architecture', value: 2 },
   { source: 'data-structures', target: 'database', value: 3 },
   { source: 'database', target: 'sql', value: 3 },
-  { source: 'network', target: 'tcp-ip', value: 3 },
+  { source: 'computer-networks', target: 'tcp-ip', value: 3 },
   { source: 'tcp-ip', target: 'operating-systems', value: 2 },
-  { source: 'ai', target: 'machine-learning', value: 3 },
+  { source: 'machine-learning-course', target: 'machine-learning', value: 3 },
   { source: 'machine-learning', target: 'neural-net', value: 3 },
   { source: 'software-engineering', target: 'algorithms', value: 2 },
 ];
@@ -75,7 +92,7 @@ export const MOCK_LINKS: Link[] = [
 export const MOCK_COURSES: Course[] = [
   {
     id: 'DONG-A-101',
-    title: 'C프로그래밍 및 실습',
+    title: 'Python프로그래밍 및 실습',
     department: '컴퓨터공학과',
     concepts: ['pointer', 'memory-management'],
     prerequisites: [],
@@ -83,7 +100,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     id: 'DONG-A-201',
-    title: '자료구조',
+    title: '데이터구조',
     department: '컴퓨터공학과',
     concepts: ['linked-list', 'stack-queue', 'memory-management'],
     prerequisites: ['DONG-A-101'],
@@ -107,7 +124,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     id: 'DONG-A-301',
-    title: '알고리즘분석',
+    title: '알고리즘',
     department: '컴퓨터공학과',
     concepts: ['sorting', 'linked-list'],
     prerequisites: ['DONG-A-201'],
@@ -123,7 +140,7 @@ export const MOCK_COURSES: Course[] = [
   },
   {
     id: 'DONG-A-401',
-    title: '인공지능',
+    title: '머신러닝',
     department: '컴퓨터공학과',
     concepts: ['machine-learning', 'neural-net', 'algorithms'],
     prerequisites: ['DONG-A-301'],

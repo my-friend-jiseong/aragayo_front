@@ -31,42 +31,12 @@ function App() {
     }
   };
 
-  // 화면 크기 업데이트 및 초기 줌 설정
-  useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight
-        });
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // 데이터 변경 시 그래프 중심 맞춤 및 엔진 설정
-  useEffect(() => {
-    if (fgRef.current) {
-      // 물리 엔진 설정 (일관성을 위해 여기서 한 번만 설정)
-      fgRef.current.d3Force('charge').strength(-4000);
-      fgRef.current.d3Force('link').distance(150);
-      fgRef.current.d3Force('center').strength(0.15);
-      
-      // 데이터가 바뀌면 약간의 딜레이 후 화면에 맞춤 (애니메이션 효과)
-      setTimeout(() => {
-        fgRef.current.zoomToFit(400, 100);
-      }, 100);
-    }
-  }, [graphData]);
-
   // 과목 선택 옵션
   const subjectOptions = useMemo(() => 
     MOCK_CONCEPTS.filter(c => c.group === 'subject'), 
   []);
 
-  // 필터링된 그래프 데이터
+  // 필터링된 그래프 데이터 (useEffect 이전에 선언)
   const graphData = useMemo(() => {
     try {
       // 1. 노드 필터링
@@ -118,6 +88,36 @@ function App() {
       return { nodes: [], links: [] };
     }
   }, [selectedGrades, showOnlySelected, subjectA, subjectB]);
+
+  // 화면 크기 업데이트 및 초기 줌 설정
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 데이터 변경 시 그래프 중심 맞춤 및 엔진 설정
+  useEffect(() => {
+    if (fgRef.current) {
+      // 물리 엔진 설정 (일관성을 위해 여기서 한 번만 설정)
+      fgRef.current.d3Force('charge').strength(-4000);
+      fgRef.current.d3Force('link').distance(250);
+      fgRef.current.d3Force('center').strength(0.15);
+      
+      // 데이터가 바뀌면 약간의 딜레이 후 화면에 맞춤 (애니메이션 효과)
+      setTimeout(() => {
+        fgRef.current.zoomToFit(400, 100);
+      }, 100);
+    }
+  }, [graphData]);
 
   return (
     <div className="app-container">

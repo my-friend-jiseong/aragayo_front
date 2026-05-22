@@ -108,13 +108,13 @@ function App() {
   useEffect(() => {
     if (fgRef.current) {
       // 물리 엔진 설정 (일관성을 위해 여기서 한 번만 설정)
-      fgRef.current.d3Force('charge').strength(-4000);
-      fgRef.current.d3Force('link').distance(250);
+      fgRef.current.d3Force('charge').strength(-5000); // 노드가 커졌으므로 반발력도 더 강화
+      fgRef.current.d3Force('link').distance(300);    // 노드 크기에 맞춰 거리도 확장
       fgRef.current.d3Force('center').strength(0.15);
       
-      // 데이터가 바뀌면 약간의 딜레이 후 화면에 맞춤 (애니메이션 효과)
+      // 데이터가 바뀌면 약간의 딜레이 후 화면에 맞춤
       setTimeout(() => {
-        fgRef.current.zoomToFit(400, 100);
+        fgRef.current.zoomToFit(400, 50); // 패딩을 100에서 50으로 줄여 더 크게 보이게 함
       }, 100);
     }
   }, [graphData]);
@@ -214,14 +214,14 @@ function App() {
                     const isSelected = node.id === subjectA || node.id === subjectB;
                     const isSubject = node.group === 'subject';
                     
-                    // 노드 크기 비율 조정 (기존 18/14/5 -> 16/10/6 으로 더 균형 있게)
-                    const size = isSelected ? 16 : (isSubject ? 10 : 6);
+                    // 노드 크기 대폭 확대
+                    const size = isSelected ? 24 : (isSubject ? 16 : 10);
                     const color = isSelected ? '#ef4444' : (isSubject ? '#2563eb' : '#94a3b8');
 
                     // 1. 선택 강조 후광
                     if (isSelected) {
                       ctx.beginPath();
-                      ctx.arc(node.x, node.y, size + 4/globalScale, 0, 2 * Math.PI, false);
+                      ctx.arc(node.x, node.y, size + 6/globalScale, 0, 2 * Math.PI, false);
                       ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
                       ctx.fill();
                     }
@@ -234,23 +234,22 @@ function App() {
                     
                     // 3. 테두리
                     ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = (isSelected ? 2.5 : 1.2) / globalScale;
+                    ctx.lineWidth = (isSelected ? 3 : 1.5) / globalScale;
                     ctx.stroke();
 
-                    // 4. 텍스트 라벨 (LOD 및 비율 최적화)
-                    const isZoomedEnough = globalScale >= 1.2;
+                    // 4. 텍스트 라벨 (가독성 위해 폰트 크기도 확대)
+                    const isZoomedEnough = globalScale >= 0.8; // 더 낮은 확대 배율에서도 보이게 조정
                     if (isZoomedEnough || isSelected) {
-                      const fontSize = (isSelected ? 14 : 11) / globalScale;
+                      const fontSize = (isSelected ? 18 : 14) / globalScale;
                       ctx.font = `${isSelected ? '800' : '600'} ${fontSize}px 'Pretendard', sans-serif`;
                       ctx.textAlign = 'center';
                       ctx.textBaseline = 'top';
                       
                       const labelText = node.label;
                       const textWidth = ctx.measureText(labelText).width;
-                      const bckgPadding = 1.5 / globalScale;
+                      const bckgPadding = 2 / globalScale;
                       
-                      // 가독성을 위한 텍스트 배경 (약간 투명하게)
-                      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                       ctx.fillRect(
                         node.x - textWidth/2 - bckgPadding, 
                         node.y + size + bckgPadding, 
@@ -258,7 +257,7 @@ function App() {
                         fontSize + bckgPadding
                       );
 
-                      ctx.fillStyle = isSelected ? '#ef4444' : '#334155';
+                      ctx.fillStyle = isSelected ? '#ef4444' : '#1e293b';
                       ctx.fillText(labelText, node.x, node.y + size + bckgPadding * 2);
                     }
                   }}

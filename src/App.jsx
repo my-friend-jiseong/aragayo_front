@@ -213,14 +213,16 @@ function App() {
                     
                     const isSelected = node.id === subjectA || node.id === subjectB;
                     const isSubject = node.group === 'subject';
-                    const size = isSelected ? 18 : (isSubject ? 14 : 5);
+                    
+                    // 노드 크기 비율 조정 (기존 18/14/5 -> 16/10/6 으로 더 균형 있게)
+                    const size = isSelected ? 16 : (isSubject ? 10 : 6);
                     const color = isSelected ? '#ef4444' : (isSubject ? '#2563eb' : '#94a3b8');
 
                     // 1. 선택 강조 후광
                     if (isSelected) {
                       ctx.beginPath();
-                      ctx.arc(node.x, node.y, size + 5/globalScale, 0, 2 * Math.PI, false);
-                      ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+                      ctx.arc(node.x, node.y, size + 4/globalScale, 0, 2 * Math.PI, false);
+                      ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
                       ctx.fill();
                     }
 
@@ -232,25 +234,32 @@ function App() {
                     
                     // 3. 테두리
                     ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = (isSelected ? 3 : 1.5) / globalScale;
+                    ctx.lineWidth = (isSelected ? 2.5 : 1.2) / globalScale;
                     ctx.stroke();
 
-                    // 4. 텍스트 라벨 (LOD 적용)
-                    const isZoomedEnough = globalScale >= 2.0;
+                    // 4. 텍스트 라벨 (LOD 및 비율 최적화)
+                    const isZoomedEnough = globalScale >= 1.2;
                     if (isZoomedEnough || isSelected) {
-                      const fontSize = (isSelected ? 16 : 13) / globalScale;
-                      ctx.font = `${isSelected ? '900' : 'bold'} ${fontSize}px 'Pretendard', sans-serif`;
+                      const fontSize = (isSelected ? 14 : 11) / globalScale;
+                      ctx.font = `${isSelected ? '800' : '600'} ${fontSize}px 'Pretendard', sans-serif`;
                       ctx.textAlign = 'center';
                       ctx.textBaseline = 'top';
                       
-                      const textWidth = ctx.measureText(node.label).width;
-                      const bckgPadding = 2 / globalScale;
+                      const labelText = node.label;
+                      const textWidth = ctx.measureText(labelText).width;
+                      const bckgPadding = 1.5 / globalScale;
                       
-                      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-                      ctx.fillRect(node.x - textWidth/2 - bckgPadding, node.y + size + bckgPadding, textWidth + bckgPadding * 2, fontSize + bckgPadding);
+                      // 가독성을 위한 텍스트 배경 (약간 투명하게)
+                      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                      ctx.fillRect(
+                        node.x - textWidth/2 - bckgPadding, 
+                        node.y + size + bckgPadding, 
+                        textWidth + bckgPadding * 2, 
+                        fontSize + bckgPadding
+                      );
 
-                      ctx.fillStyle = isSelected ? '#ef4444' : '#1e293b';
-                      ctx.fillText(node.label, node.x, node.y + size + bckgPadding * 2);
+                      ctx.fillStyle = isSelected ? '#ef4444' : '#334155';
+                      ctx.fillText(labelText, node.x, node.y + size + bckgPadding * 2);
                     }
                   }}
                 />

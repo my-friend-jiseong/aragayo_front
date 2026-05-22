@@ -1,12 +1,12 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { MOCK_CONCEPTS, MOCK_LINKS } from './mockData';
 import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('map');
-  const [subjectA, setSubjectA] = useState('c-programming');
-  const [subjectB, setSubjectB] = useState('ai');
+  const [subjectA, setSubjectA] = useState('python-programming');
+  const [subjectB, setSubjectB] = useState('algorithms');
   const [zoomLevel, setZoomLevel] = useState(1);
   
   const containerRef = useRef(null);
@@ -94,18 +94,19 @@ function App() {
                   height={dimensions.height}
                   graphData={graphData}
                   nodeRelSize={1}
-                  linkWidth={2}
-                  linkColor={() => 'rgba(203, 213, 225, 0.6)'}
-                  linkDirectionalArrowLength={7}
+                  linkWidth={1.5}
+                  linkColor={() => 'rgba(203, 213, 225, 0.4)'}
+                  linkDirectionalArrowLength={5}
                   linkDirectionalArrowRelPos={1}
                   linkCurvature={0.25}
-                  cooldownTicks={150} // 시뮬레이션 시간 충분히 확보
+                  cooldownTicks={200}
                   onEngineStop={() => {
                     const fg = fgRef.current;
                     if (fg) {
-                      // 간격 대폭 확장 및 반발력 강화
-                      fg.d3Force('charge').strength(-2500);
-                      fg.d3Force('link').distance(400);
+                      // 노드 간 반발력 대폭 강화 및 링크 거리 확장
+                      fg.d3Force('charge').strength(-4000);
+                      fg.d3Force('link').distance(150);
+                      fg.d3Force('center').strength(0.15);
                     }
                   }}
                   nodeCanvasObject={(node, ctx, globalScale) => {

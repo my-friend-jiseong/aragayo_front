@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BlogRec-Map (완성형) · 이종 지식 네트워크 추천</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            panel: '#0c1018',
+            surface: '#151b28',
+            border: '#243044',
+            neonBlue: '#38bdf8',
+            neonRed: '#f43f5e',
+            postBlue: '#0ea5e9',
+          },
+        },
+      },
+    };
+  </script>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    #graph-wrap {
+      min-height: 320px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(14, 165, 233, 0.06) 0%, transparent 55%),
+                  linear-gradient(180deg, #0a0e14 0%, #0f141c 100%);
+      border-radius: 0 0 0.5rem 0.5rem;
+    }
+
+    .kw {
+      cursor: pointer;
+      padding: 0 4px;
+      border-radius: 4px;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    }
+    .kw-learnable {
+      background: rgba(51, 65, 85, 0.35);
+      color: #94a3b8;
+      border-bottom: 1px dashed #475569;
+    }
+    .kw-learnable:hover {
+      background: rgba(56, 189, 248, 0.15);
+      color: #7dd3fc;
+    }
+    .kw-learned {
+      background: rgba(244, 63, 94, 0.22);
+      color: #fda4af;
+      border-bottom: 1px solid #f43f5e;
+      box-shadow: 0 0 12px rgba(244, 63, 94, 0.2);
+    }
+    .kw-noise {
+      opacity: 0.35;
+      text-decoration: line-through;
+      color: #64748b;
+      cursor: default;
+    }
+
+    .feed-card {
+      transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1),
+                  opacity 0.4s ease,
+                  box-shadow 0.35s ease,
+                  border-color 0.3s;
+    }
+    .feed-card.sorting { opacity: 0.65; transform: scale(0.97); }
+    .feed-card.is-active {
+      border-color: rgba(56, 189, 248, 0.55);
+      box-shadow: 0 0 24px rgba(14, 165, 233, 0.12);
+    }
+
+    input[type='range']::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+    }
+
+    .toggle-track { transition: background 0.25s; }
+    .toggle-thumb { transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1); }
+    .toggle-on .toggle-track { background: linear-gradient(90deg, #0ea5e9, #6366f1); }
+    .toggle-on .toggle-thumb { transform: translateX(1.25rem); }
+
+    .gat-active { animation: gatRing 2s ease-in-out infinite; }
+    @keyframes gatRing {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.35); }
+      50% { box-shadow: 0 0 0 6px rgba(56, 189, 248, 0); }
+    }
+
+    .scrollbar-thin::-webkit-scrollbar { width: 5px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+    .fade-panel { animation: fadeIn 0.35s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .help-box { border-left: 3px solid rgba(56, 189, 248, 0.5); }
+    .help-box.gat-on { border-left-color: rgba(244, 63, 94, 0.4); background: rgba(244, 63, 94, 0.05); }
+
+    #toast {
+      transform: translateY(120%);
+      transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+    #toast.show { transform: translateY(0); }
+
+    details summary { cursor: pointer; list-style: none; }
+    details summary::-webkit-details-marker { display: none; }
+
+    #post-body.md-body h2 { font-size: 1.05rem; font-weight: 600; color: #e2e8f0; margin: 1.25rem 0 0.5rem; }
+    #post-body.md-body h3 { font-size: 0.95rem; font-weight: 600; color: #cbd5e1; margin: 1rem 0 0.4rem; }
+    #post-body.md-body p { margin: 0.6rem 0; }
+    #post-body.md-body code { background: #1e293b; padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.85em; }
+    #post-body.md-body pre { background: #0f172a; padding: 0.75rem; border-radius: 8px; overflow-x: auto; margin: 0.75rem 0; }
+    #post-body.md-body a { color: #38bdf8; text-decoration: underline; }
+    #post-body.md-body img { max-width: 100%; border-radius: 8px; margin: 0.5rem 0; }
+
+    .tag-chip { cursor: pointer; font-size: 11px; padding: 4px 10px; border-radius: 999px; border: 1px solid #334155; transition: all 0.2s; }
+    .tag-chip.learnable { background: #1e293b; color: #94a3b8; }
+    .tag-chip.learnable:hover { border-color: #38bdf8; color: #7dd3fc; }
+    .tag-chip.learned { background: rgba(244,63,94,0.2); border-color: #f43f5e; color: #fda4af; }
+    .tag-chip.noise { opacity: 0.4; text-decoration: line-through; cursor: default; }
+  </style>
+</head>
+<body class="bg-[#080b10] text-slate-200 h-screen overflow-hidden flex flex-col">
+
+  <!-- Top bar -->
+  <header class="h-12 shrink-0 border-b border-border bg-panel/95 backdrop-blur flex items-center justify-between px-4 gap-4">
+    <div class="flex items-center gap-2.5 shrink-0">
+      <div class="w-7 h-7 rounded-md bg-gradient-to-br from-postBlue to-indigo-600 flex items-center justify-center text-[10px] font-bold shadow-lg shadow-sky-500/20">BR</div>
+      <div>
+        <h1 class="text-sm font-semibold">BlogRec-Map</h1>
+        <p class="text-[10px] text-slate-500">블로그 읽으며 개념 지도를 채우는 학습 추천</p>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-4 text-[11px] text-slate-400">
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-postBlue"></span> <b class="text-slate-300">하늘색</b> = 지금 읽는 글</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span> <b class="text-slate-300">회색</b> = 아직 모름 (클릭하면 배움)</span>
+      <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-neonRed"></span> <b class="text-slate-300">빨강</b> = 배운 개념</span>
+    </div>
+    <button id="btn-guide" type="button" class="text-xs px-3 py-1.5 rounded-lg border border-border bg-surface hover:bg-slate-800 text-slate-300 shrink-0">
+      사용법 보기
+    </button>
+  </header>
+
+  <main class="flex flex-1 min-h-0">
+
+    <!-- LEFT -->
+    <aside class="w-[280px] shrink-0 border-r border-border bg-panel flex flex-col p-4 gap-3 overflow-y-auto scrollbar-thin">
+
+      <!-- Velog 연동 -->
+      <div class="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-3 space-y-2">
+        <p class="text-xs font-semibold text-emerald-300">Velog에서 글 가져오기</p>
+        <p class="text-[10px] text-slate-500 leading-snug">주소가 <span class="text-slate-400">velog.io/@아이디</span> 형태일 때 아이디만 입력하세요.</p>
+        <input id="velog-username" type="text" placeholder="예: velopert"
+          class="w-full px-3 py-2 text-sm bg-surface border border-border rounded-lg focus:outline-none focus:border-emerald-500/50" />
+        <div class="flex gap-2">
+          <select id="velog-limit" class="flex-1 text-xs px-2 py-2 bg-surface border border-border rounded-lg text-slate-300">
+            <option value="6">최근 6개</option>
+            <option value="10" selected>최근 10개</option>
+            <option value="15">최근 15개</option>
+          </select>
+          <button id="velog-load" type="button"
+            class="flex-1 text-xs font-medium py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition">
+            불러오기
+          </button>
+        </div>
+        <button id="velog-mock" type="button" class="w-full text-[10px] text-slate-500 hover:text-slate-300 py-1">
+          데모 데이터로 되돌리기
+        </button>
+        <p id="velog-status" class="text-[10px] text-slate-600 min-h-[2em]"></p>
+      </div>
+
+      <!-- 사용 가이드 -->
+      <div id="guide-panel" class="rounded-xl border border-sky-900/50 bg-sky-950/25 p-3 space-y-2">
+        <p class="text-xs font-semibold text-sky-300">처음이신가요? 이렇게 쓰세요</p>
+        <ol class="text-[11px] text-slate-400 space-y-1.5 list-decimal list-inside leading-relaxed">
+          <li>가운데 <b class="text-slate-300">밑줄 키워드</b>나 아래 <b class="text-slate-300">회색 점</b>을 눌러 <span class="text-rose-300">「배움」</span>으로 표시</li>
+          <li>오른쪽 <b class="text-slate-300">다음 글 추천</b> 순서가 자동으로 바뀜</li>
+          <li><b class="text-slate-300">글과 무관한 키워드 숨기기</b>로 치킨 맛집 같은 노이즈 제거</li>
+        </ol>
+        <button id="guide-dismiss" type="button" class="text-[10px] text-slate-500 hover:text-slate-300">가이드 닫기</button>
+      </div>
+
+      <div class="rounded-xl border border-border bg-surface p-3">
+        <div class="flex justify-between text-xs mb-2">
+          <span class="text-slate-300 font-medium">내 학습 진도</span>
+          <span id="mastery-pct" class="font-semibold text-neonRed">0%</span>
+        </div>
+        <div class="h-2.5 bg-slate-800/80 rounded-full overflow-hidden">
+          <div id="mastery-bar" class="h-full rounded-full transition-all duration-600 ease-out"
+            style="width:0%; background: linear-gradient(90deg, #f43f5e, #fb7185, #38bdf8);"></div>
+        </div>
+        <p id="mastery-detail" class="mt-2 text-[11px] text-slate-500">전체 키워드 중 <span class="text-rose-300">0개</span>를 배웠어요</p>
+      </div>
+
+      <div class="rounded-xl border border-border bg-surface p-3">
+        <p class="text-xs font-medium text-slate-300 mb-2">다음 글 추천 방향</p>
+        <div class="flex justify-between text-[10px] text-slate-500 mb-1">
+          <span>← 아직 안 배운 것</span>
+          <span>이미 아는 것 →</span>
+        </div>
+        <input id="alpha-slider" type="range" min="0" max="100" value="50"
+          class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+        <p id="alpha-hint" class="mt-2 text-[11px] text-sky-300/90 leading-snug">
+          균형 모드: 새로울 것과 익숙한 것을 반반 반영해요.
+        </p>
+      </div>
+
+      <div class="rounded-xl border border-border bg-surface p-3 space-y-2">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-xs font-medium text-slate-200">글과 무관한 키워드 숨기기</p>
+            <p id="gat-status-label" class="text-[11px] text-slate-500 mt-0.5">지금은 노이즈도 그래프에 보여요</p>
+          </div>
+          <button id="gat-toggle" type="button" role="switch" aria-checked="false" aria-label="글과 무관한 키워드 숨기기"
+            class="toggle-track relative w-11 h-6 rounded-full bg-slate-700 shrink-0">
+            <span class="toggle-thumb absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md"></span>
+          </button>
+        </div>
+        <div id="help-gat" class="help-box pl-2.5 py-2 pr-1 rounded-r-lg bg-slate-800/40">
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            예: 정렬 글에 끼어든 <b class="text-slate-300">「홍대 치킨 맛집」</b>은 공부와 관계없어요.
+            켜면 그래프 가장자리로 밀어내고 연결선을 숨깁니다.
+          </p>
+        </div>
+      </div>
+
+      <details class="rounded-xl border border-border bg-surface p-3 text-[11px] text-slate-500">
+        <summary class="text-slate-400 font-medium">점수는 어떻게 정해지나요?</summary>
+        <p class="mt-2 leading-relaxed">
+          각 추천 글마다 <b class="text-slate-300">겹치는 키워드 개수</b>를 셉니다.
+          왼쪽 슬라이더가 높을수록 <b class="text-slate-300">아직 회색인 키워드</b>가 많은 글을 위로,
+          낮을수록 <b class="text-rose-300">이미 빨간 키워드</b>가 많은 글을 위로 올립니다.
+        </p>
+      </details>
+
+      <div class="mt-auto pt-3 border-t border-border text-[11px] text-slate-500">
+        <p><span class="text-slate-600">지금 읽는 글:</span><br><span id="active-title" class="text-slate-300">—</span></p>
+      </div>
+    </aside>
+
+    <!-- CENTER -->
+    <section class="flex-1 flex flex-col min-w-0 border-r border-border">
+      <div id="content-panel" class="flex-1 overflow-y-auto scrollbar-thin p-5 bg-[#0a0e14] fade-panel">
+        <div class="mb-4 p-3 rounded-lg border border-border/80 bg-surface/60 text-[11px] text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
+          <span>💡 <b class="text-slate-300">밑줄 단어</b>를 누르면 「배움」 처리 · 그래프와 연동</span>
+          <span>🔵 <b class="text-slate-300">하늘 상자</b> = 다른 글을 누르면 그 글로 이동</span>
+        </div>
+        <h2 id="post-title" class="text-lg font-semibold text-slate-50 tracking-tight">—</h2>
+        <p id="post-meta" class="text-xs text-slate-500 mt-1 mb-4">—</p>
+        <article id="post-body" class="text-sm leading-[1.75] text-slate-300 max-w-3xl space-y-4"></article>
+      </div>
+      <div class="shrink-0 border-t border-border">
+        <div class="px-4 py-2 bg-surface flex items-center justify-between gap-2">
+          <span class="text-xs font-medium text-slate-300">개념 연결 지도</span>
+          <span id="graph-status" class="text-[11px] text-slate-500 text-right">회색 점 클릭 → 빨강(배움) · 다시 클릭하면 취소</span>
+        </div>
+        <div id="graph-wrap"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="w-[300px] shrink-0 bg-panel flex flex-col">
+      <div class="p-4 border-b border-border">
+        <h3 class="text-sm font-semibold text-slate-100">다음에 읽으면 좋은 글</h3>
+        <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+          점수가 높을수록 <b class="text-slate-400">지금 내가 아는·모르는 키워드</b>와 잘 맞는 글이에요.
+        </p>
+      </div>
+      <div id="feed" class="flex-1 overflow-y-auto p-3 space-y-2.5 scrollbar-thin"></div>
+    </aside>
+  </main>
+
+  <!-- 안내 모달 -->
+  <div id="modal-guide" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div class="max-w-md w-full rounded-2xl border border-border bg-surface p-5 shadow-2xl">
+      <h3 class="text-lg font-semibold text-slate-100">BlogRec-Map 사용법</h3>
+      <ul class="mt-4 space-y-3 text-sm text-slate-400">
+        <li class="flex gap-3"><span class="text-sky-400 font-bold shrink-0">1</span><span>글 안의 <b class="text-slate-200">회색 밑줄 키워드</b>나 아래 지도의 <b class="text-slate-200">회색 점</b>을 눌러 「이 개념을 배웠다」고 표시하세요.</span></li>
+        <li class="flex gap-3"><span class="text-sky-400 font-bold shrink-0">2</span><span>배운 키워드는 <b class="text-rose-300">빨간색</b>으로 바뀌고, 오른쪽 <b class="text-slate-200">추천 글 순서</b>가 같이 바뀝니다.</span></li>
+        <li class="flex gap-3"><span class="text-sky-400 font-bold shrink-0">3</span><span>왼쪽 <b class="text-slate-200">「글과 무관한 키워드 숨기기」</b>를 켜면 치킨 맛집처럼 공부와 상관없는 단어가 지도에서 사라집니다.</span></li>
+        <li class="flex gap-3"><span class="text-sky-400 font-bold shrink-0">4</span><span>오른쪽 카드를 누르면 그 글을 읽을 수 있고, 가운데 지도의 <b class="text-slate-200">하늘색 상자</b>를 눌러도 이동할 수 있어요.</span></li>
+        <li class="flex gap-3"><span class="text-sky-400 font-bold shrink-0">5</span><span>왼쪽 <b class="text-slate-200">Velog 아이디</b>를 입력하고 불러오면 실제 글·태그로 지도가 만들어져요.</span></li>
+      </ul>
+      <button id="modal-close" type="button" class="mt-5 w-full py-2.5 rounded-xl bg-postBlue hover:bg-sky-500 text-white text-sm font-medium transition">
+        시작하기
+      </button>
+    </div>
+  </div>
+
+  <!-- 토스트 -->
+  <div id="toast" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full border border-border bg-surface/95 text-sm text-slate-200 shadow-xl pointer-events-none max-w-[90vw] text-center"></div>
+
+  <script>
+(function () {
+  'use strict';
+
+  /* ─── Global learner state (mock backend session) ─── */
+  const learned = new Set();
+  let activePostId = 'post-1';
+  let alpha = 0.5;
+  let gatFilterOn = false;
+  let dataSource = 'mock';
+  let velogUsername = '';
+
+  let network = null;
+  let nodesDS = null;
+  let edgesDS = null;
+  let physicsTimer = null;
+
+  const $ = (id) => document.getElementById(id);
+  let toastTimer = null;
+
+  function showToast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+  }
+
+  function updateAlphaHint() {
+    const hint = $('alpha-hint');
+    if (alpha >= 0.66) {
+      hint.textContent = '「아직 안 배운 키워드」가 많은 글을 더 위에 추천해요.';
+    } else if (alpha <= 0.33) {
+      hint.textContent = '「이미 배운 키워드」가 많은 글을 더 위에 추천해요.';
+    } else {
+      hint.textContent = '균형 모드: 새로울 것과 익숙한 것을 반반 반영해요.';
+    }
+  }
+
+  function updateGatHelp() {
+    const label = $('gat-status-label');
+    const box = $('help-gat');
+    if (gatFilterOn) {
+      label.textContent = '켜짐 — 노이즈 키워드를 지도에서 숨기고 있어요';
+      box.classList.add('gat-on');
+      $('help-gat').querySelector('p').innerHTML =
+        '<span class="text-emerald-400/90">✓ 필터 작동 중</span> · 글과 관계없는 키워드(예: 홍대 치킨 맛집)가 가장자리로 밀려나 연결이 끊겼어요.';
+    } else {
+      label.textContent = '지금은 노이즈도 그래프에 보여요';
+      box.classList.remove('gat-on');
+      $('help-gat').querySelector('p').innerHTML =
+        '예: 정렬 글에 끼어든 <b class="text-slate-300">「홍대 치킨 맛집」</b>은 공부와 관계없어요. 켜면 그래프 가장자리로 밀어내고 연결선을 숨깁니다.';
+    }
+  }
+
+  function scoreExplanation(post, score) {
+    let un = 0;
+    let le = 0;
+    post.keywords.forEach((name) => {
+      const k = kwMeta(name);
+      if (!k || k.noise) return;
+      if (isLearned(k.id)) le++;
+      else un++;
+    });
+    if (!un && !le) return '관련 키워드가 없어요';
+    const parts = [];
+    if (un) parts.push(`아직 안 배운 키워드 ${un}개`);
+    if (le) parts.push(`이미 배운 키워드 ${le}개`);
+    return parts.join(' · ') + ` → 점수 ${score.toFixed(1)}`;
+  }
+
+  const VELOG_API = 'https://v2.velog.io/graphql';
+  const VELOG_QUERY = `query Posts($username: String!, $limit: Int) {
+    posts(username: $username, limit: $limit) {
+      id title body url_slug tags released_at
+    }
+  }`;
+
+  const NOISE_TAG_RE = /맛집|치킨|날씨|주말|일상|여행|카페|맛집|데이트|회식|^20\d{2}$|^log$/i;
+
+  /* ─── Mock corpus (fallback) ─── */
+  const MOCK_KEYWORDS = {
+    '퀵 정렬': { id: 'kw-quicksort', label: '퀵 정렬', noise: false },
+    '시간 복잡도': { id: 'kw-complexity', label: '시간 복잡도', noise: false },
+    '배열': { id: 'kw-array', label: '배열', noise: false },
+    '홍대 치킨 맛집': { id: 'kw-noise-chicken', label: '홍대 치킨 맛집', noise: true },
+    '분할 정복': { id: 'kw-dc', label: '분할 정복', noise: false },
+    '재귀 호출': { id: 'kw-recursion', label: '재귀 호출', noise: false },
+    '그래프 어텐션': { id: 'kw-gat', label: '그래프 어텐션', noise: false },
+    '인접 행렬': { id: 'kw-adj', label: '인접 행렬', noise: false },
+    '코사인 유사도': { id: 'kw-cosine', label: '코사인 유사도', noise: false },
+  };
+
+  const MOCK_POSTS = [
+    {
+      id: 'post-1',
+      title: '자료구조와 정렬 알고리즘 기초',
+      author: 'algo.dev',
+      tags: ['자료구조', '정렬'],
+      keywords: ['퀵 정렬', '시간 복잡도', '배열', '홍대 치킨 맛집'],
+      similarity: { 'post-2': 0.92, 'post-3': 0.18 },
+      body: `정렬 알고리즘을 학습할 때 가장 먼저 다루는 자료구조는 <kw>배열</kw>입니다.
+<kw>퀵 정렬</kw>은 피벗을 기준으로 분할하는 대표적인 방식이며, 평균 성능이 우수합니다.
+알고리즘 분석에서는 <kw>시간 복잡도</kw> 표기 O(n log n)을 필수로 이해해야 합니다.
+점심 메뉴로 <kw noise>홍대 치킨 맛집</kw>을 검색했지만, 이건 정렬 공부와는 관계없는 내용이에요.`,
+    },
+    {
+      id: 'post-2',
+      title: '퀵 정렬 알고리즘의 최적화와 분할 정복',
+      author: 'algo.dev',
+      tags: ['정렬', '최적화'],
+      keywords: ['퀵 정렬', '시간 복잡도', '분할 정복', '재귀 호출'],
+      similarity: { 'post-1': 0.92, 'post-3': 0.24 },
+      body: `<kw>퀵 정렬</kw>의 worst-case를 줄이려면 피벗 선택 전략과 작은 파티션에 대한 삽입 정렬 하이브리드가 효과적입니다.
+이 접근은 <kw>분할 정복</kw> 패러다임의 전형이며, 호출 스택은 <kw>재귀 호출</kw> 깊이에 좌우됩니다.
+실무에서는 <kw>시간 복잡도</kw>뿐 아니라 캐시 지역성까지 고려한 상수 최적화가 중요합니다.`,
+    },
+    {
+      id: 'post-3',
+      title: '그래프 신경망(GNN) 기반 추천 아키텍처',
+      author: 'gnn.lab',
+      tags: ['GNN', '추천'],
+      keywords: ['그래프 어텐션', '인접 행렬', '코사인 유사도'],
+      similarity: { 'post-1': 0.18, 'post-2': 0.24 },
+      body: `이종 지식 그래프에서 게시글·키워드 이웃에 <kw>그래프 어텐션</kw> 가중치를 부여하면 문맥적 메시지 전달이 가능합니다.
+구조는 <kw>인접 행렬</kw> 또는 edge list로 표현하며, 후보 랭킹에는 <kw>코사인 유사도</kw>가 자주 쓰입니다.
+백엔드 GAT 레이어는 매 클릭·토글마다 attention을 재계산해 프론트로 push한다고 가정합니다.`,
+    },
+  ];
+
+  let KEYWORDS = { ...MOCK_KEYWORDS };
+  let POSTS = [...MOCK_POSTS];
+
+  function isPostNode(id) {
+    return POSTS.some((p) => p.id === id);
+  }
+
+  function slugifyTag(tag) {
+    return 'kw-' + tag.toLowerCase().replace(/[^a-z0-9가-힣]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+  }
+
+  function isNoiseTag(tag, posts) {
+    if (NOISE_TAG_RE.test(tag.trim())) return true;
+    const n = posts.filter((p) => p.keywords.includes(tag)).length;
+    return posts.length >= 4 && n === 1;
+  }
+
+  function buildKeywordsFromPosts(posts) {
+    const map = {};
+    posts.forEach((post) => {
+      post.keywords.forEach((tag) => {
+        if (!map[tag]) {
+          map[tag] = {
+            id: slugifyTag(tag),
+            label: tag,
+            noise: isNoiseTag(tag, posts),
+          };
+        }
+      });
+    });
+    return map;
+  }
+
+  function jaccardWeight(p1, p2) {
+    const t1 = new Set(p1.keywords.filter((k) => !kwMeta(k)?.noise));
+    const t2 = new Set(p2.keywords.filter((k) => !kwMeta(k)?.noise));
+    const inter = [...t1].filter((x) => t2.has(x)).length;
+    const union = new Set([...t1, ...t2]).size;
+    return union ? Math.max(0.12, inter / union) : 0.12;
+  }
+
+  function postPostWeight(a, b) {
+    const pa = POSTS.find((p) => p.id === a);
+    if (pa?.similarity?.[b] != null) return pa.similarity[b];
+    const pb = POSTS.find((p) => p.id === b);
+    if (!pa || !pb) return 0.15;
+    return jaccardWeight(pa, pb);
+  }
+
+  async function fetchVelogPosts(username, limit) {
+    const res = await fetch(VELOG_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: VELOG_QUERY,
+        variables: { username, limit },
+      }),
+    });
+    if (!res.ok) throw new Error(`Velog 서버 응답 오류 (${res.status})`);
+    const json = await res.json();
+    if (json.errors?.length) throw new Error(json.errors[0].message || 'GraphQL 오류');
+    const posts = json.data?.posts;
+    if (!posts?.length) throw new Error('공개 글이 없거나 아이디가 틀렸어요.');
+    return posts;
+  }
+
+  function transformVelogPosts(raw, username) {
+    const posts = raw.map((item) => {
+      const tags = (item.tags || []).filter(Boolean);
+      const keywords = [...new Set(tags)];
+      const date = item.released_at
+        ? new Date(item.released_at).toLocaleDateString('ko-KR')
+        : '';
+      return {
+        id: `velog-${item.id}`,
+        velogUrl: `https://velog.io/@${username}/${item.url_slug}`,
+        title: item.title,
+        author: `@${username}`,
+        tags,
+        keywords,
+        body: item.body || '',
+        bodyFormat: 'markdown',
+        releasedAt: date,
+        similarity: {},
+      };
+    });
+
+    posts.forEach((p) => {
+      posts.forEach((other) => {
+        if (p.id !== other.id) p.similarity[other.id] = jaccardWeight(p, other);
+      });
+    });
+
+    return posts;
+  }
+
+  function setVelogStatus(msg, isError) {
+    const el = $('velog-status');
+    el.textContent = msg;
+    el.className = `text-[10px] min-h-[2em] ${isError ? 'text-rose-400' : 'text-emerald-400/90'}`;
+  }
+
+  async function loadVelogFromInput() {
+    const username = $('velog-username').value.trim().replace(/^@/, '');
+    const limit = Number($('velog-limit').value) || 10;
+    if (!username) {
+      setVelogStatus('Velog 아이디를 입력해 주세요.', true);
+      return;
+    }
+
+    const btn = $('velog-load');
+    btn.disabled = true;
+    btn.textContent = '불러오는 중…';
+    setVelogStatus('Velog에서 글 목록을 가져오고 있어요…');
+
+    try {
+      const raw = await fetchVelogPosts(username, limit);
+      POSTS = transformVelogPosts(raw, username);
+      KEYWORDS = buildKeywordsFromPosts(POSTS);
+      dataSource = 'velog';
+      velogUsername = username;
+      learned.clear();
+      activePostId = POSTS[0].id;
+
+      if (network) network.destroy();
+      network = null;
+      nodesDS = null;
+      edgesDS = null;
+
+      initNetwork();
+      refreshUI();
+      setVelogStatus(`${POSTS.length}개 글 · 태그 ${Object.keys(KEYWORDS).length}개 연결됨`);
+      showToast(`@${username} Velog 글 ${POSTS.length}개를 불러왔어요`);
+      try { localStorage.setItem('blogrec-velog-user', username); } catch (_) {}
+    } catch (err) {
+      console.error(err);
+      const hint = err.message?.includes('Failed to fetch') || err.name === 'TypeError'
+        ? ' — file:// 대신 로컬 서버로 여세요: npx serve blogrec-map -p 3456'
+        : '';
+      setVelogStatus((err.message || '불러오기 실패') + hint, true);
+      showToast('Velog 불러오기에 실패했어요');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '불러오기';
+    }
+  }
+
+  function restoreMockData() {
+    POSTS = [...MOCK_POSTS];
+    KEYWORDS = { ...MOCK_KEYWORDS };
+    dataSource = 'mock';
+    velogUsername = '';
+    learned.clear();
+    activePostId = 'post-1';
+    if (network) network.destroy();
+    network = null;
+    nodesDS = null;
+    edgesDS = null;
+    initNetwork();
+    refreshUI();
+    setVelogStatus('데모 데이터로 돌아왔어요.');
+    showToast('예시(데모) 데이터를 사용 중이에요');
+  }
+
+  const learnableKw = () =>
+    Object.values(KEYWORDS).filter((k) => !k.noise).map((k) => k.id);
+
+  function kwMeta(name) {
+    return KEYWORDS[name];
+  }
+
+  function isLearned(kwId) {
+    return learned.has(kwId);
+  }
+
+  function toggleLearned(kwId) {
+    const meta = Object.values(KEYWORDS).find((k) => k.id === kwId);
+    const wasLearned = learned.has(kwId);
+    if (wasLearned) learned.delete(kwId);
+    else learned.add(kwId);
+    if (meta) {
+      showToast(wasLearned
+        ? `「${meta.label}」을 아직 모르는 상태로 되돌렸어요`
+        : `「${meta.label}」을 배웠어요! 추천 목록이 바뀝니다`);
+    }
+    refreshUI();
+  }
+
+  /* ─── Scoring (mock backend formula) ─── */
+  function scorePost(post) {
+    let unlearned = 0;
+    let learnedMatch = 0;
+    post.keywords.forEach((name) => {
+      const k = kwMeta(name);
+      if (!k || k.noise) return;
+      if (isLearned(k.id)) learnedMatch++;
+      else unlearned++;
+    });
+    return alpha * unlearned + (1 - alpha) * learnedMatch;
+  }
+
+  function rankedPosts() {
+    return POSTS
+      .filter((p) => p.id !== activePostId)
+      .map((p) => ({ post: p, score: scorePost(p) }))
+      .sort((a, b) => b.score - a.score);
+  }
+
+  function mastery() {
+    const ids = learnableKw();
+    const n = ids.filter((id) => isLearned(id)).length;
+    return { n, total: ids.length, pct: ids.length ? Math.round((n / ids.length) * 100) : 0 };
+  }
+
+  /* ─── GAT mock: attention weights for edges ─── */
+  function gatAttention(postId, kwName) {
+    const k = kwMeta(kwName);
+    if (k?.noise) return 0.05;
+    const post = POSTS.find((p) => p.id === postId);
+    const base = 0.55 + Math.random() * 0.2;
+    if (post && isLearned(k.id)) return Math.min(1, base + 0.25);
+    return base;
+  }
+
+  function sharedKeywords(p1, p2) {
+    const s2 = new Set(p2.keywords);
+    return p1.keywords.filter((k) => s2.has(k) && !kwMeta(k).noise);
+  }
+
+  /* ─── Build full heterogeneous graph ─── */
+  function buildGraph() {
+    const nodes = [];
+    const edges = [];
+    const noiseIds = [];
+
+    POSTS.forEach((post) => {
+      const isActive = post.id === activePostId;
+      nodes.push({
+        id: post.id,
+        label: truncate(post.title, 22),
+        title: post.title,
+        group: 'post',
+        shape: 'box',
+        font: { color: '#e0f2fe', size: isActive ? 13 : 11, face: 'Inter' },
+        color: {
+          background: isActive ? '#0284c7' : '#0c4a6e',
+          border: isActive ? '#38bdf8' : '#0ea5e9',
+          highlight: { background: '#38bdf8', border: '#7dd3fc' },
+        },
+        borderWidth: isActive ? 3 : 1.5,
+        shadow: isActive
+          ? { enabled: true, color: 'rgba(56,189,248,0.85)', size: 28, x: 0, y: 0 }
+          : { enabled: true, color: 'rgba(14,165,233,0.25)', size: 10, x: 0, y: 2 },
+        size: isActive ? 28 : 22,
+        fixed: false,
+      });
+
+      post.keywords.forEach((kwName) => {
+        const k = kwMeta(kwName);
+        const nid = k.id;
+        if (!nodes.find((n) => n.id === nid)) {
+          const learnedState = isLearned(nid);
+          if (k.noise) noiseIds.push(nid);
+          nodes.push({
+            id: nid,
+            label: k.label,
+            title: k.noise ? '글과 무관한 키워드 (노이즈)' : (learnedState ? '배운 개념 · 클릭하면 취소' : '아직 모름 · 클릭하면 배움'),
+            group: k.noise ? 'noise' : (learnedState ? 'learned' : 'learnable'),
+            shape: 'dot',
+            size: k.noise ? 10 : (learnedState ? 18 : 14),
+            font: { color: k.noise ? '#64748b' : '#e2e8f0', size: 11 },
+            color: k.noise
+              ? { background: '#1e293b', border: '#475569' }
+              : learnedState
+                ? { background: '#e11d48', border: '#f43f5e', highlight: { background: '#fb7185', border: '#fda4af' } }
+                : { background: '#334155', border: '#475569', highlight: { background: '#475569', border: '#94a3b8' } },
+            borderWidth: 2,
+            opacity: 1,
+            x: undefined,
+            y: undefined,
+            fixed: false,
+          });
+        }
+
+        const att = gatAttention(post.id, kwName);
+        const hideEdge = gatFilterOn && k.noise;
+        edges.push({
+          id: `e-${post.id}-${nid}`,
+          from: post.id,
+          to: nid,
+          width: hideEdge ? 0 : Math.max(1, att * 4),
+          color: hideEdge
+            ? { opacity: 0.02, color: '#1e293b' }
+            : { color: 'rgba(56,189,248,0.45)', highlight: '#38bdf8', opacity: 0.7 + att * 0.3 },
+          dashes: k.noise,
+          hidden: hideEdge,
+          smooth: { type: 'continuous' },
+        });
+      });
+    });
+
+    for (let i = 0; i < POSTS.length; i++) {
+      for (let j = i + 1; j < POSTS.length; j++) {
+        const p1 = POSTS[i];
+        const p2 = POSTS[j];
+        const shared = sharedKeywords(p1, p2);
+        if (!shared.length) continue;
+        const w = postPostWeight(p1.id, p2.id);
+        edges.push({
+          id: `bridge-${p1.id}-${p2.id}`,
+          from: p1.id,
+          to: p2.id,
+          width: gatFilterOn ? w * 2 : w * 3.5,
+          color: { color: 'rgba(99,102,241,0.35)', highlight: '#818cf8' },
+          dashes: [8, 6],
+          smooth: { type: 'curvedCW', roundness: 0.2 },
+          title: `공유: ${shared.join(', ')}`,
+        });
+      }
+    }
+
+    return { nodes, edges, noiseIds };
+  }
+
+  function truncate(s, n) {
+    return s.length > n ? s.slice(0, n - 1) + '…' : s;
+  }
+
+  function applyGatIsolation(noiseIds) {
+    if (!nodesDS || !network) return;
+    const updates = [];
+    const cx = 0;
+    const cy = 0;
+    let angle = 0;
+    const radius = 420;
+
+    nodesDS.forEach((node) => {
+      const isNoise = noiseIds.includes(node.id);
+      if (!isNoise) return;
+      if (gatFilterOn) {
+        angle += (2 * Math.PI) / Math.max(noiseIds.length, 1);
+        updates.push({
+          id: node.id,
+          opacity: 0.1,
+          x: cx + Math.cos(angle) * radius,
+          y: cy + Math.sin(angle) * radius,
+          fixed: { x: true, y: true },
+          physics: false,
+          color: { background: 'rgba(30,41,59,0.3)', border: 'rgba(71,85,105,0.2)' },
+          font: { color: 'rgba(100,116,139,0.4)', size: 9 },
+        });
+      } else {
+        updates.push({
+          id: node.id,
+          opacity: 1,
+          x: undefined,
+          y: undefined,
+          fixed: false,
+          physics: true,
+          color: { background: '#1e293b', border: '#475569' },
+          font: { color: '#64748b', size: 11 },
+        });
+      }
+    });
+
+    if (updates.length) nodesDS.update(updates);
+
+    edgesDS.forEach((edge) => {
+      const toNode = nodesDS.get(edge.to);
+      const fromPost = isPostNode(edge.from);
+      const isNoiseEdge = fromPost && toNode && toNode.group === 'noise';
+      if (isNoiseEdge) {
+        edgesDS.update({
+          id: edge.id,
+          hidden: gatFilterOn,
+          width: gatFilterOn ? 0 : 1,
+          color: gatFilterOn
+            ? { opacity: 0 }
+            : { color: 'rgba(56,189,248,0.25)', opacity: 0.4 },
+        });
+      }
+    });
+
+    if (gatFilterOn) {
+      network.setOptions({ physics: { enabled: false } });
+      network.stopSimulation();
+    } else {
+      network.setOptions({
+        physics: {
+          enabled: true,
+          barnesHut: { gravitationalConstant: -3200, springLength: 140, springConstant: 0.035, damping: 0.09 },
+          stabilization: { iterations: 100 },
+        },
+      });
+      network.startSimulation();
+      clearTimeout(physicsTimer);
+      physicsTimer = setTimeout(() => network.setOptions({ physics: { enabled: false } }), 2200);
+    }
+  }
+
+  function initNetwork() {
+    const container = $('graph-wrap');
+    const { nodes, edges, noiseIds } = buildGraph();
+    nodesDS = new vis.DataSet(nodes);
+    edgesDS = new vis.DataSet(edges);
+
+    const options = {
+      nodes: { borderWidth: 2 },
+      edges: { arrows: { to: { enabled: true, scaleFactor: 0.45 } } },
+      physics: {
+        enabled: true,
+        barnesHut: {
+          gravitationalConstant: -3200,
+          centralGravity: 0.15,
+          springLength: 140,
+          springConstant: 0.035,
+          damping: 0.09,
+        },
+        stabilization: { iterations: 120 },
+      },
+      interaction: {
+        hover: true,
+        tooltipDelay: 80,
+        zoomView: true,
+        dragView: true,
+        navigationButtons: false,
+      },
+    };
+
+    if (network) network.destroy();
+    network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, options);
+
+    network.on('click', (params) => {
+      if (!params.nodes.length) return;
+      const id = params.nodes[0];
+      if (isPostNode(id)) {
+        if (id !== activePostId) switchPost(id);
+        return;
+      }
+      const meta = Object.values(KEYWORDS).find((k) => k.id === id);
+      if (!meta || meta.noise) return;
+      toggleLearned(id);
+    });
+
+    network.once('stabilizationIterationsDone', () => {
+      network.setOptions({ physics: { enabled: false } });
+      applyGatIsolation(noiseIds);
+    });
+
+    if (gatFilterOn) setTimeout(() => applyGatIsolation(noiseIds), 50);
+  }
+
+  function rebuildGraph() {
+    if (!nodesDS) {
+      initNetwork();
+      return;
+    }
+    const { nodes, edges, noiseIds } = buildGraph();
+    nodesDS.clear();
+    edgesDS.clear();
+    nodesDS.add(nodes);
+    edgesDS.add(edges);
+    applyGatIsolation(noiseIds);
+    const active = nodesDS.get(activePostId);
+    if (active) network.selectNodes([activePostId]);
+  }
+
+  function updateKeywordNodes() {
+    if (!nodesDS) return;
+    const updates = [];
+    Object.values(KEYWORDS).forEach((k) => {
+      const learnedState = isLearned(k.id);
+      if (k.noise) return;
+      updates.push({
+        id: k.id,
+        group: learnedState ? 'learned' : 'learnable',
+        size: learnedState ? 18 : 14,
+        color: learnedState
+          ? { background: '#e11d48', border: '#f43f5e' }
+          : { background: '#334155', border: '#475569' },
+        title: learnedState ? '배운 개념' : '아직 모름 · 클릭하면 배움',
+      });
+    });
+    nodesDS.update(updates);
+
+    POSTS.forEach((post) => {
+      post.keywords.forEach((name) => {
+        const kid = kwMeta(name).id;
+        const eid = `e-${post.id}-${kid}`;
+        if (!edgesDS.get(eid)) return;
+        const att = gatAttention(post.id, name);
+        const hide = gatFilterOn && kwMeta(name).noise;
+        edgesDS.update({
+          id: eid,
+          width: hide ? 0 : Math.max(1, att * 4),
+          hidden: hide,
+        });
+      });
+    });
+  }
+
+  function bindKeywordClicks(root) {
+    root.querySelectorAll('[data-kw]').forEach((el) => {
+      el.addEventListener('click', () => {
+        if (el.dataset.noise === '1') return;
+        toggleLearned(el.dataset.kw);
+        network?.selectNodes([el.dataset.kw]);
+        network?.focus(el.dataset.kw, { scale: 1.15, animation: { duration: 400, easingFunction: 'easeInOutQuad' } });
+      });
+    });
+  }
+
+  function renderTagChips(post) {
+    if (!post.keywords.length) return '';
+    const chips = post.keywords.map((name) => {
+      const k = kwMeta(name);
+      if (!k) return '';
+      if (k.noise) {
+        return `<span class="tag-chip noise" data-kw="${k.id}" data-noise="1" title="다른 글과 잘 안 겹치는 태그">${name}</span>`;
+      }
+      const cls = isLearned(k.id) ? 'learned' : 'learnable';
+      const tip = isLearned(k.id) ? '클릭 → 아직 모름' : '클릭 → 배움 표시';
+      return `<button type="button" class="tag-chip ${cls}" data-kw="${k.id}" title="${tip}">${name}</button>`;
+    }).join('');
+    return `
+      <div class="mb-4 p-3 rounded-lg border border-border bg-surface/50">
+        <p class="text-[11px] text-slate-500 mb-2">이 글의 키워드 (Velog 태그) — 눌러서 배움 표시</p>
+        <div class="flex flex-wrap gap-1.5">${chips}</div>
+      </div>`;
+  }
+
+  /* ─── Article rendering ─── */
+  function renderArticle(post) {
+    if (!post) return;
+    $('post-title').textContent = post.title;
+    const metaParts = [post.author, post.releasedAt, post.tags.join(' · ')].filter(Boolean);
+    if (post.velogUrl) {
+      $('post-meta').innerHTML = `${metaParts.join(' · ')} · <a href="${post.velogUrl}" target="_blank" rel="noopener" class="text-sky-400 hover:underline">Velog에서 보기 ↗</a>`;
+    } else {
+      $('post-meta').textContent = metaParts.join(' · ');
+    }
+    $('active-title').textContent = truncate(post.title, 28);
+
+    const bodyEl = $('post-body');
+    bodyEl.classList.toggle('md-body', post.bodyFormat === 'markdown');
+
+    if (post.bodyFormat === 'markdown') {
+      const md = typeof marked !== 'undefined'
+        ? marked.parse(post.body || '_본문이 비어 있어요._', { breaks: true })
+        : `<pre>${post.body}</pre>`;
+      bodyEl.innerHTML = renderTagChips(post) + md;
+      bindKeywordClicks(bodyEl);
+    } else {
+      const html = post.body.replace(/<kw(?:\s+noise)?>([^<]+)<\/kw>/g, (match, text) => {
+        const noise = match.includes('noise');
+        const k = KEYWORDS[text];
+        if (!k) return text;
+        if (noise) return `<span class="kw kw-noise" data-kw="${k.id}" data-noise="1" title="글과 관련 없는 예시">${text}</span>`;
+        const cls = isLearned(k.id) ? 'kw kw-learned' : 'kw kw-learnable';
+        const tip = isLearned(k.id) ? '클릭하면 「아직 모름」으로' : '클릭하면 「배움」으로 표시';
+        return `<span class="${cls}" data-kw="${k.id}" title="${tip}">${text}</span>`;
+      });
+      bodyEl.innerHTML = html.split('\n').map((p) => `<p>${p.trim()}</p>`).join('');
+      bindKeywordClicks(bodyEl);
+    }
+
+    $('content-panel').classList.remove('fade-panel');
+    void $('content-panel').offsetWidth;
+    $('content-panel').classList.add('fade-panel');
+  }
+
+  /* ─── Feed ─── */
+  function renderFeed() {
+    const feed = $('feed');
+    const items = rankedPosts();
+    const activePost = POSTS.find((p) => p.id === activePostId);
+
+    feed.querySelectorAll('.feed-card').forEach((c) => c.classList.add('sorting'));
+
+    requestAnimationFrame(() => {
+      feed.innerHTML = '';
+
+      if (activePost) {
+        const cur = document.createElement('div');
+        cur.className = 'feed-card is-active p-3 rounded-xl border border-neonBlue/40 bg-sky-950/20';
+        cur.innerHTML = `
+          <p class="text-[10px] text-neonBlue font-medium mb-1">📖 지금 읽는 글</p>
+          <p class="text-xs font-medium text-slate-200">${activePost.title}</p>
+          <p class="text-[10px] text-slate-500 mt-1">아래 지도에서 하늘색으로 빛나요</p>`;
+        feed.appendChild(cur);
+      }
+
+      items.forEach(({ post, score }, idx) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'feed-card w-full text-left p-3 rounded-xl border border-border bg-surface hover:border-slate-500';
+        card.style.transitionDelay = `${idx * 45}ms`;
+
+        const chips = post.keywords
+          .filter((n) => !kwMeta(n).noise)
+          .map((n) => {
+            const k = kwMeta(n);
+            const on = isLearned(k.id);
+            return `<span class="text-[9px] px-1.5 py-0.5 rounded ${on ? 'bg-rose-500/25 text-rose-300' : 'bg-slate-700/80 text-slate-400'}">${n}</span>`;
+          })
+          .join('');
+
+        card.innerHTML = `
+          <div class="flex justify-between gap-2 items-start">
+            <span class="text-xs font-medium text-slate-200 leading-snug">${post.title}</span>
+            <span class="text-xs shrink-0 px-2 py-0.5 rounded-md bg-slate-800 text-neonBlue font-semibold" title="맞는 키워드가 많을수록 높아요">${score.toFixed(1)}점</span>
+          </div>
+          <p class="text-[10px] text-slate-500 mt-1">${scoreExplanation(post, score)}</p>
+          <div class="flex flex-wrap gap-1 mt-2">${chips}</div>
+          <p class="text-[10px] text-slate-600 mt-2">카드를 누르면 이 글을 읽을 수 있어요</p>`;
+
+        card.addEventListener('click', () => switchPost(post.id));
+        feed.appendChild(card);
+      });
+
+      requestAnimationFrame(() => {
+        feed.querySelectorAll('.feed-card').forEach((c) => c.classList.remove('sorting'));
+      });
+    });
+  }
+
+  function updateMastery() {
+    const { n, total, pct } = mastery();
+    $('mastery-pct').textContent = `${pct}%`;
+    $('mastery-bar').style.width = `${pct}%`;
+    $('mastery-detail').innerHTML = `전체 키워드 중 <span class="text-rose-300 font-medium">${n}개</span>를 배웠어요 (총 ${total}개)`;
+  }
+
+  function refreshUI() {
+    const post = POSTS.find((p) => p.id === activePostId);
+    renderArticle(post);
+    updateKeywordNodes();
+    updatePostGlow();
+    renderFeed();
+    updateMastery();
+  }
+
+  function updatePostGlow() {
+    if (!nodesDS) return;
+    POSTS.forEach((p) => {
+      const active = p.id === activePostId;
+      nodesDS.update({
+        id: p.id,
+        borderWidth: active ? 3 : 1.5,
+        size: active ? 28 : 22,
+        color: {
+          background: active ? '#0284c7' : '#0c4a6e',
+          border: active ? '#38bdf8' : '#0ea5e9',
+        },
+        shadow: active
+          ? { enabled: true, color: 'rgba(56,189,248,0.85)', size: 28, x: 0, y: 0 }
+          : { enabled: true, color: 'rgba(14,165,233,0.25)', size: 10, x: 0, y: 2 },
+      });
+    });
+  }
+
+  function switchPost(postId) {
+    activePostId = postId;
+    const post = POSTS.find((p) => p.id === postId);
+    if (post) showToast(`「${post.title}」을 읽기 시작했어요`);
+    rebuildGraph();
+    refreshUI();
+    network?.focus(activePostId, { scale: 1.05, animation: { duration: 500, easingFunction: 'easeInOutCubic' } });
+  }
+
+  /* ─── Controls ─── */
+  $('alpha-slider').addEventListener('input', (e) => {
+    alpha = Number(e.target.value) / 100;
+    updateAlphaHint();
+    renderFeed();
+  });
+
+  $('gat-toggle').addEventListener('click', () => {
+    gatFilterOn = !gatFilterOn;
+    const btn = $('gat-toggle');
+    btn.classList.toggle('toggle-on', gatFilterOn);
+    btn.setAttribute('aria-checked', String(gatFilterOn));
+    btn.classList.toggle('gat-active', gatFilterOn);
+    updateGatHelp();
+
+    if (gatFilterOn) {
+      $('graph-status').textContent = '노이즈 숨김 ON · 관계없는 키워드는 가장자리로';
+      showToast('글과 무관한 키워드를 지도에서 숨겼어요');
+    } else {
+      $('graph-status').textContent = '회색 점 클릭 → 빨강(배움) · 다시 클릭하면 취소';
+      showToast('모든 키워드를 다시 지도에 표시해요');
+    }
+
+    rebuildGraph();
+    refreshUI();
+  });
+
+  $('guide-dismiss').addEventListener('click', () => {
+    $('guide-panel').classList.add('hidden');
+    try { localStorage.setItem('blogrec-guide-off', '1'); } catch (_) {}
+  });
+
+  $('btn-guide').addEventListener('click', () => {
+    $('modal-guide').classList.remove('hidden');
+  });
+
+  $('modal-close').addEventListener('click', () => {
+    $('modal-guide').classList.add('hidden');
+    try { localStorage.setItem('blogrec-guide-seen', '1'); } catch (_) {}
+  });
+
+  $('modal-guide').addEventListener('click', (e) => {
+    if (e.target === $('modal-guide')) $('modal-guide').classList.add('hidden');
+  });
+
+  $('velog-load').addEventListener('click', loadVelogFromInput);
+  $('velog-username').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loadVelogFromInput();
+  });
+  $('velog-mock').addEventListener('click', restoreMockData);
+
+  /* ─── Boot ─── */
+  initNetwork();
+  refreshUI();
+  updateAlphaHint();
+  updateGatHelp();
+
+  let showModal = true;
+  try {
+    if (localStorage.getItem('blogrec-guide-seen')) showModal = false;
+    if (localStorage.getItem('blogrec-guide-off')) $('guide-panel').classList.add('hidden');
+  } catch (_) {}
+  if (showModal) $('modal-guide').classList.remove('hidden');
+
+  try {
+    const saved = localStorage.getItem('blogrec-velog-user');
+    if (saved) $('velog-username').value = saved;
+  } catch (_) {}
+
+  showToast(dataSource === 'velog'
+    ? 'Velog 모드 — 태그를 눌러 배움 표시하세요'
+    : '왼쪽에서 Velog 아이디를 입력하거나 데모로 둘러보세요');
+})();
+  </script>
+</body>
+</html>

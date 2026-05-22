@@ -1,6 +1,13 @@
 node_modules/
 .expo/
 .expo-shared/
+
+# Android / Gradle (빌드 캐시 — 저장소에 포함하지 않음)
+android/.gradle/
+android/app/build/
+android/build/
+*.iml
+.local.properties
 npm-debug.*
 *.jks
 *.p8

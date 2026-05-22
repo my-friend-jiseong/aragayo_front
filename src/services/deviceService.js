@@ -3,6 +3,7 @@ import * as localStorage from './localStorage';
 
 export const getOrCreateDeviceId = localStorage.getOrCreateDeviceId;
 export const getDevice = localStorage.getDevice;
+export const updateUserProfile = localStorage.updateUserProfile;
 export const subscribeToDevice = (deviceId, callback) => {
   // 간단한 폴링 방식 (실시간은 나중에 필요하면 추가)
   const interval = setInterval(async () => {

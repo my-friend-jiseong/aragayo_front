@@ -9,6 +9,10 @@ export const verifyQuestion = localStorage.verifyQuestion;
 export const getHallOfFame = localStorage.getHallOfFame;
 export const getHotVotes = localStorage.getHotVotes;
 export const getAllTimeHotVotes = localStorage.getAllTimeHotVotes;
+export const getSchoolStatistics = localStorage.getSchoolStatistics;
+export const getMajorStatistics = localStorage.getMajorStatistics;
+export const getAllSchoolsStatistics = localStorage.getAllSchoolsStatistics;
+export const getAllMajorsStatistics = localStorage.getAllMajorsStatistics;
 
 export const subscribeToLatestOpenQuestion = (callback, category = 'all') => {
   // 간단한 폴링 방식

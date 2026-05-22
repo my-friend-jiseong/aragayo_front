@@ -3,6 +3,7 @@ import ForceGraph2D from 'react-force-graph-2d';
 import { forceCollide } from 'd3-force';
 import { MOCK_KEYWORDS, MOCK_DATA_NODES, MOCK_EDGES } from './mockData';
 import { computeMultiSourcePathHighlight } from './pathSearch';
+import logoUrl from './assets/logo.png';
 import './App.css';
 
 const HIGH_GAT_THRESHOLD = 0.8;
@@ -303,17 +304,17 @@ function App() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: '#ffffff', padding: '1.75rem', borderRadius: '16px',
+              background: '#fff', padding: '1.75rem', borderRadius: '16px',
               width: '420px', maxWidth: '90vw',
               boxShadow: '0 12px 32px rgba(15, 23, 42, 0.2)',
             }}
           >
-            <h2 style={{fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.25rem', color: '#0f172a'}}>커리큘럼 저장</h2>
-            <p style={{fontSize: '0.8rem', color: '#64748b', marginBottom: '1.25rem'}}>
+            <h2 style={{fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.25rem', color: 'var(--color-text)'}}>커리큘럼 저장</h2>
+            <p style={{fontSize: '0.8rem', color: 'var(--color-text-sub)', marginBottom: '1.25rem'}}>
               목표 <b>{KEYWORD_LABEL_BY_ID.get(targetId)}</b>, 현재 완료 노드 {completedSourceIds.length}개의 스냅샷을 저장합니다.
             </p>
             <label style={{display: 'block', marginBottom: '0.85rem'}}>
-              <div style={{fontSize: '0.75rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px'}}>이름</div>
+              <div style={{fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '4px'}}>이름</div>
               <input
                 type="text"
                 value={saveName}
@@ -322,13 +323,13 @@ function App() {
                 autoFocus
                 style={{
                   width: '100%', padding: '0.6rem 0.8rem', fontSize: '0.85rem',
-                  border: '1.5px solid #cbd5e1', borderRadius: '10px', outline: 'none',
+                  border: '1.5px solid var(--color-line)', borderRadius: 'var(--radius-md)', outline: 'none',
                   boxSizing: 'border-box',
                 }}
               />
             </label>
             <label style={{display: 'block', marginBottom: '1.25rem'}}>
-              <div style={{fontSize: '0.75rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px'}}>메모 (선택)</div>
+              <div style={{fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '4px'}}>메모 (선택)</div>
               <textarea
                 value={saveMemo}
                 onChange={(e) => setSaveMemo(e.target.value)}
@@ -336,7 +337,7 @@ function App() {
                 rows={3}
                 style={{
                   width: '100%', padding: '0.6rem 0.8rem', fontSize: '0.85rem',
-                  border: '1.5px solid #cbd5e1', borderRadius: '10px', outline: 'none',
+                  border: '1.5px solid var(--color-line)', borderRadius: 'var(--radius-md)', outline: 'none',
                   resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit',
                 }}
               />
@@ -345,17 +346,17 @@ function App() {
               <button
                 onClick={() => setShowSaveModal(false)}
                 style={{
-                  padding: '0.55rem 1.1rem', borderRadius: '10px',
-                  border: '1px solid #cbd5e1', background: '#ffffff',
-                  fontSize: '0.85rem', fontWeight: 600, color: '#475569', cursor: 'pointer',
+                  padding: '0.55rem 1.1rem', borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-line)', background: '#fff',
+                  fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-sub)', cursor: 'pointer',
                 }}
               >취소</button>
               <button
                 onClick={saveCurriculum}
                 disabled={!saveName.trim()}
                 style={{
-                  padding: '0.55rem 1.1rem', borderRadius: '10px',
-                  border: 'none', background: '#10b981', color: '#ffffff',
+                  padding: '0.55rem 1.1rem', borderRadius: 'var(--radius-md)',
+                  border: 'none', background: 'var(--color-main)', color: '#fff',
                   fontSize: '0.85rem', fontWeight: 700,
                   cursor: saveName.trim() ? 'pointer' : 'not-allowed',
                   opacity: saveName.trim() ? 1 : 0.5,
@@ -367,12 +368,7 @@ function App() {
       )}
 
       <aside className="sidebar">
-        <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem'}}>
-          <div style={{width: '40px', height: '40px', borderRadius: '10px', background: '#2563eb', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '1.2rem'}}>D</div>
-          <div>
-            <h1 style={{fontSize: '1.1rem', fontWeight: '800'}}>동아대학교</h1>
-          </div>
-        </div>
+        <img src={logoUrl} alt="알아가요" className="sidebar-logo" />
 
         {/* <div className="filter-section" style={{marginBottom: '2rem'}}>
           <h3 style={{fontSize: '0.85rem', fontWeight: '700', color: '#1e293b', marginBottom: '1rem'}}>학년별 필터</h3>
@@ -403,11 +399,11 @@ function App() {
         </div> */}
         
         <div className="filter-section" style={{flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column'}}>
-          <h3 style={{fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.75rem'}}>내 커리큘럼</h3>
+          <h3 className="t-sub" style={{marginBottom: '0.75rem'}}>내 커리큘럼</h3>
           {curriculumStore.length === 0 ? (
             <div style={{
-              padding: '0.85rem', background: '#f8fafc', borderRadius: '10px',
-              fontSize: '0.75rem', color: '#94a3b8', border: '1px dashed #e2e8f0',
+              padding: '0.85rem', background: 'var(--color-base)', borderRadius: 'var(--radius-md)',
+              fontSize: '0.75rem', color: 'var(--color-text-sub)', border: '1px dashed var(--color-line)',
               lineHeight: 1.5,
             }}>
               저장된 커리큘럼이 없습니다. 목표 키워드 선택 + 완료 마킹된 노드가 있을 때 <b>"+ 커리큘럼 저장"</b>으로 보관할 수 있습니다.
@@ -421,8 +417,8 @@ function App() {
                   <div
                     key={entry.id}
                     style={{
-                      padding: '0.65rem 0.75rem', background: '#ffffff',
-                      border: '1px solid #e2e8f0', borderRadius: '10px',
+                      padding: '0.65rem 0.75rem', background: '#fff',
+                      border: '1px solid var(--color-line)', borderRadius: 'var(--radius-md)',
                       display: 'flex', flexDirection: 'column', gap: '4px',
                     }}
                   >
@@ -431,7 +427,7 @@ function App() {
                         onClick={() => loadCurriculum(entry)}
                         style={{
                           background: 'transparent', border: 'none', padding: 0,
-                          fontSize: '0.82rem', fontWeight: 700, color: '#1e293b',
+                          fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text)',
                           textAlign: 'left', cursor: 'pointer', flex: 1,
                         }}
                         title="클릭하여 이 커리큘럼 불러오기 (목표와 완료 스냅샷 복원)"
@@ -440,18 +436,18 @@ function App() {
                         onClick={() => deleteCurriculum(entry.id)}
                         style={{
                           background: 'transparent', border: 'none', padding: 0,
-                          color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', lineHeight: 1,
+                          color: 'var(--color-text-sub)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1,
                         }}
                         title="삭제"
                         aria-label="삭제"
                       >×</button>
                     </div>
-                    <div style={{fontSize: '0.7rem', color: '#64748b'}}>
+                    <div style={{fontSize: '0.7rem', color: 'var(--color-text-sub)'}}>
                       🎯 {tLabel} · 완료 {snapshotCount}개
                     </div>
                     {entry.memo && (
                       <div style={{
-                        fontSize: '0.7rem', color: '#475569',
+                        fontSize: '0.7rem', color: 'var(--color-text-sub)',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>
                         {entry.memo}
@@ -468,7 +464,7 @@ function App() {
       <main className="main-content">
         <header className="header">
           <div className="search-controls">
-            <span style={{fontSize: '0.85rem', fontWeight: 700, color: '#475569'}}>목표</span>
+            <span style={{fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-sub)'}}>목표</span>
             <input
               type="text"
               className="search-select"
@@ -483,7 +479,7 @@ function App() {
                 <option key={k.id} value={k.label}>{k.source === 'subject' ? '과목' : '위키'}</option>
               ))}
             </datalist>
-            <button className="btn-primary" onClick={() => fgRef.current?.zoomToFit(400, 100)}>화면 맞춤</button>
+            <button className="btn-point" onClick={() => fgRef.current?.zoomToFit(400, 100)}>화면 맞춤</button>
             <button
               className="btn-primary"
               onClick={openSaveModal}
@@ -491,7 +487,6 @@ function App() {
               style={{
                 opacity: canSaveCurriculum ? 1 : 0.4,
                 cursor: canSaveCurriculum ? 'pointer' : 'not-allowed',
-                background: '#10b981',
               }}
               title={
                 canSaveCurriculum
@@ -502,7 +497,7 @@ function App() {
               + 커리큘럼 저장
             </button>
           </div>
-          <div style={{fontSize: '0.7rem', color: '#94a3b8'}}>CONREC v1.6</div>
+          <div style={{fontSize: '0.7rem', color: 'var(--color-text-sub)'}}>CONREC v1.6</div>
         </header>
 
         <div className="content-body">
@@ -518,15 +513,15 @@ function App() {
                 top: '20px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                background: noCompletedYet ? '#dbeafe' : '#fef3c7',
-                color: noCompletedYet ? '#1e40af' : '#92400e',
+                background: noCompletedYet ? 'var(--color-main-soft)' : '#fef3c7',
+                color: noCompletedYet ? 'var(--color-main-hover)' : '#92400e',
                 padding: '0.75rem 1.5rem',
-                borderRadius: '12px',
-                border: `1px solid ${noCompletedYet ? '#93c5fd' : '#fcd34d'}`,
+                borderRadius: 'var(--radius-lg)',
+                border: `1px solid ${noCompletedYet ? 'var(--color-main)' : '#fcd34d'}`,
                 fontSize: '0.85rem',
                 fontWeight: '600',
                 zIndex: 10,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                boxShadow: 'var(--shadow-card)',
                 pointerEvents: 'none',
                 maxWidth: '90%',
                 textAlign: 'center',
@@ -742,27 +737,27 @@ function App() {
                     right: 0,
                     width: '320px',
                     height: '100%',
-                    background: '#ffffff',
-                    boxShadow: '-4px 0 16px rgba(0,0,0,0.08)',
+                    background: '#fff',
+                    boxShadow: '-4px 0 16px rgba(15, 23, 42, 0.08)',
                     padding: '1.5rem',
                     overflowY: 'auto',
                     zIndex: 20,
-                    borderLeft: '1px solid #e2e8f0',
+                    borderLeft: '1px solid var(--color-line)',
                   }}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem'}}>
                       <div>
-                        <div style={{fontSize: '0.7rem', color: '#64748b', fontWeight: 600, marginBottom: '0.25rem'}}>
+                        <div style={{fontSize: '0.7rem', color: 'var(--color-text-sub)', fontWeight: 600, marginBottom: '0.25rem'}}>
                           {panelKeyword.source === 'subject'
                             ? `${panelKeyword.grade}학년 과목 키워드`
                             : '위키 키워드'}
                         </div>
-                        <h3 style={{fontSize: '1.15rem', fontWeight: 800, color: '#0f172a'}}>{panelKeyword.label}</h3>
+                        <h3 style={{fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)'}}>{panelKeyword.label}</h3>
                       </div>
                       <button
                         onClick={() => setPanelNodeId(null)}
                         style={{
                           background: 'transparent', border: 'none', cursor: 'pointer',
-                          fontSize: '1.4rem', color: '#94a3b8', lineHeight: 1,
+                          fontSize: '1.4rem', color: 'var(--color-text-sub)', lineHeight: 1,
                         }}
                         aria-label="닫기"
                       >×</button>
@@ -774,7 +769,7 @@ function App() {
                         target="_blank"
                         rel="noreferrer"
                         style={{
-                          display: 'inline-block', fontSize: '0.8rem', color: '#2563eb',
+                          display: 'inline-block', fontSize: '0.8rem', color: 'var(--color-main)',
                           marginBottom: '1.5rem', textDecoration: 'underline',
                         }}
                       >
@@ -782,8 +777,8 @@ function App() {
                       </a>
                     )}
 
-                    <div style={{borderTop: '1px solid #e2e8f0', paddingTop: '1rem', marginTop: '0.5rem'}}>
-                      <h4 style={{fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.75rem'}}>학습 상태</h4>
+                    <div style={{borderTop: '1px solid var(--color-line)', paddingTop: '1rem', marginTop: '0.5rem'}}>
+                      <h4 style={{fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem'}}>학습 상태</h4>
                       <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                         {['completed', 'in-progress', 'planned'].map(s => {
                           const active = nodeStatusMap[panelKeyword.id] === s;
@@ -794,10 +789,10 @@ function App() {
                               style={{
                                 display: 'flex', alignItems: 'center', gap: '10px',
                                 padding: '0.6rem 0.85rem',
-                                border: `1.5px solid ${active ? STATUS_COLORS[s] : '#e2e8f0'}`,
-                                background: active ? STATUS_COLORS[s] : '#ffffff',
-                                color: active ? '#ffffff' : '#0f172a',
-                                borderRadius: '10px',
+                                border: `1.5px solid ${active ? STATUS_COLORS[s] : 'var(--color-line)'}`,
+                                background: active ? STATUS_COLORS[s] : '#fff',
+                                color: active ? '#fff' : 'var(--color-text)',
+                                borderRadius: 'var(--radius-md)',
                                 fontWeight: active ? 700 : 500,
                                 fontSize: '0.85rem',
                                 cursor: 'pointer',
@@ -808,7 +803,7 @@ function App() {
                                 display: 'inline-flex', width: '20px', height: '20px',
                                 borderRadius: '50%',
                                 background: active ? 'rgba(255,255,255,0.25)' : STATUS_COLORS[s],
-                                color: '#ffffff', alignItems: 'center', justifyContent: 'center',
+                                color: '#fff', alignItems: 'center', justifyContent: 'center',
                                 fontWeight: 800, fontSize: '0.9rem',
                               }}>{STATUS_ICONS[s]}</span>
                               {STATUS_LABELS[s]}
@@ -820,9 +815,9 @@ function App() {
                             onClick={() => setStatus(panelKeyword.id, null)}
                             style={{
                               padding: '0.5rem 0.85rem',
-                              border: '1px dashed #cbd5e1',
-                              background: '#ffffff', color: '#64748b',
-                              borderRadius: '10px', fontSize: '0.8rem',
+                              border: '1px dashed var(--color-line)',
+                              background: '#fff', color: 'var(--color-text-sub)',
+                              borderRadius: 'var(--radius-md)', fontSize: '0.8rem',
                               cursor: 'pointer',
                             }}
                           >상태 해제</button>

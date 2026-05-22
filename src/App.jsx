@@ -7,12 +7,31 @@ import logoUrl from './assets/logo.png';
 import './App.css';
 
 const HIGH_GAT_THRESHOLD = 0.8;
+const TOP_PATHS = 3; // FEATURE_PATH_VISUALIZATION.md §2.4 — 추천 경로 개수
 
 const KEYWORD_LABEL_BY_ID = (() => {
   const m = new Map();
   MOCK_KEYWORDS.forEach(k => m.set(k.id, k.label));
   return m;
 })();
+
+const KEYWORD_GAT_BY_ID = (() => {
+  const m = new Map();
+  MOCK_KEYWORDS.forEach(k => m.set(k.id, typeof k.gatScore === 'number' ? k.gatScore : 0.5));
+  return m;
+})();
+
+// 경로 점수 = 경로상 키워드(짝수 인덱스) gatScore 평균.
+// 데이터 노드(홀수 인덱스)는 추천 점수에 포함하지 않는다.
+function gatPathScore(path) {
+  let sum = 0;
+  let count = 0;
+  for (let i = 0; i < path.length; i += 2) {
+    sum += KEYWORD_GAT_BY_ID.get(path[i]) ?? 0.5;
+    count += 1;
+  }
+  return count ? sum / count : 0;
+}
 
 // 학습 상태 색상 (P2 명세 §2.3)
 const STATUS_COLORS = {
@@ -54,12 +73,15 @@ function App() {
     [nodeStatusMap]
   );
 
-  // 완료 시작점들 → 목표로 향하는 경로 합집합
+  // 완료 시작점들 → 목표로 향하는 경로 중 GAT 평균 기준 Top-3만 (추천)
   const pathData = useMemo(() => {
     if (!targetId || completedSourceIds.length === 0) {
       return { paths: [], keywords: new Set(), dataNodes: new Set(), edges: new Set() };
     }
-    return computeMultiSourcePathHighlight(completedSourceIds, targetId, MOCK_EDGES, 4);
+    return computeMultiSourcePathHighlight(
+      completedSourceIds, targetId, MOCK_EDGES, 4,
+      { topK: TOP_PATHS, scoreFn: gatPathScore }
+    );
   }, [completedSourceIds, targetId]);
 
   const hasPath = pathData.paths.length > 0;

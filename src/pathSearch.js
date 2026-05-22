@@ -1,7 +1,7 @@
-// 두 키워드 사이의 경로 탐색.
-// docs/FEATURE_PATH_VISUALIZATION.md §2.2~2.4 규약:
-//   - 무방향 처리 (A→B와 B→A 결과 동일)
-//   - 모든 경로 표시
+// 키워드 사이의 경로 탐색.
+// docs/FEATURE_PATH_VISUALIZATION.md §2.3~2.4 규약:
+//   - 무방향 처리 (방향성 의미 없음)
+//   - 학습 완료 시작점들 → 목표 경로 중 점수 기준 Top-K만 강조 (추천)
 //   - 경로는 키워드만 강조, 데이터 노드는 흐리게
 //
 // 그래프는 이분 그래프(키워드 ↔ 데이터 노드). 한 "키워드 hop"은
@@ -116,19 +116,23 @@ export function computePathHighlight(start, end, edges, maxHops = DEFAULT_MAX_HO
 
 /**
  * 다중 시작점 → 단일 목표 경로 강조.
- * 학습 완료된 모든 키워드 각각에서 목표까지의 경로를 합집합으로 산출한다.
+ * 학습 완료된 모든 키워드 각각에서 목표까지의 경로를 모은 뒤,
+ * options.topK / options.scoreFn이 주어지면 점수 내림차순(동률시 짧은 경로 우선)으로
+ * 상위 K개만 강조한다. 주어지지 않으면 모은 경로 전부.
  *
  * @param {Iterable<string>} sources - 시작 키워드 id들 (학습 완료 노드)
  * @param {string} target - 목표 키워드 id
  * @param {Array<{source: string, target: string}>} edges
  * @param {number} maxHops
+ * @param {{ topK?: number, scoreFn?: (path: string[]) => number }} [options]
  * @returns {{ paths: string[][], keywords: Set<string>, dataNodes: Set<string>, edges: Set<string> }}
  */
 export function computeMultiSourcePathHighlight(
   sources,
   target,
   edges,
-  maxHops = DEFAULT_MAX_HOPS
+  maxHops = DEFAULT_MAX_HOPS,
+  options = {}
 ) {
   const empty = { paths: [], keywords: new Set(), dataNodes: new Set(), edges: new Set() };
   if (!target) return empty;
@@ -148,6 +152,15 @@ export function computeMultiSourcePathHighlight(
     if (allPaths.length >= aggregateLimit) break;
   }
 
-  const sets = pathHighlightSets(allPaths);
-  return { paths: allPaths, ...sets };
+  // Top-K 필터: 점수 내림차순, 동률시 짧은 경로 우선
+  let selected = allPaths;
+  const { topK, scoreFn } = options;
+  if (typeof topK === 'number' && topK > 0 && typeof scoreFn === 'function') {
+    const scored = allPaths.map(p => ({ path: p, score: scoreFn(p) }));
+    scored.sort((a, b) => b.score - a.score || a.path.length - b.path.length);
+    selected = scored.slice(0, topK).map(s => s.path);
+  }
+
+  const sets = pathHighlightSets(selected);
+  return { paths: selected, ...sets };
 }

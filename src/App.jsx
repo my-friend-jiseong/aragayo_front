@@ -371,11 +371,10 @@ function App() {
           <div style={{width: '40px', height: '40px', borderRadius: '10px', background: '#2563eb', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900', fontSize: '1.2rem'}}>D</div>
           <div>
             <h1 style={{fontSize: '1.1rem', fontWeight: '800'}}>동아대학교</h1>
-            <p style={{fontSize: '0.7rem', color: '#64748b'}}>커리큘럼 헬퍼</p>
           </div>
         </div>
 
-        <div className="filter-section" style={{marginBottom: '2rem'}}>
+        {/* <div className="filter-section" style={{marginBottom: '2rem'}}>
           <h3 style={{fontSize: '0.85rem', fontWeight: '700', color: '#1e293b', marginBottom: '1rem'}}>학년별 필터</h3>
           <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
             {['1', '2', '3', '4'].map(grade => (
@@ -390,9 +389,9 @@ function App() {
               </label>
             ))}
           </div>
-        </div>
+        </div> */}
 
-        <div className="filter-section" style={{marginBottom: '2rem', padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe'}}>
+        {/* <div className="filter-section" style={{marginBottom: '2rem', padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe'}}>
           <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600', color: '#1d4ed8'}}>
             <input 
               type="checkbox" 
@@ -401,7 +400,7 @@ function App() {
             />
             선택한 과목만 보기
           </label>
-        </div>
+        </div> */}
         
         <div className="filter-section" style={{flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column'}}>
           <h3 style={{fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.75rem'}}>내 커리큘럼</h3>
@@ -469,7 +468,7 @@ function App() {
       <main className="main-content">
         <header className="header">
           <div className="search-controls">
-            <span style={{fontSize: '0.85rem', fontWeight: 700, color: '#475569'}}>🎯 목표</span>
+            <span style={{fontSize: '0.85rem', fontWeight: 700, color: '#475569'}}>목표</span>
             <input
               type="text"
               className="search-select"
@@ -508,8 +507,8 @@ function App() {
 
         <div className="content-body">
           <div className="tabs">
-            <div className={`tab ${activeTab === 'map' ? 'active' : ''}`} onClick={() => setActiveTab('map')}>📊 지식 지도</div>
-            <div className={`tab ${activeTab === 'videos' ? 'active' : ''}`} onClick={() => setActiveTab('videos')}>📚 시스템 정보</div>
+            <div className={`tab ${activeTab === 'map' ? 'active' : ''}`} onClick={() => setActiveTab('map')}>지식 지도</div>
+            {/* <div className={`tab ${activeTab === 'videos' ? 'active' : ''}`} onClick={() => setActiveTab('videos')}>📚 시스템 정보</div> */}
           </div>
 
           <div className="tab-panel" ref={containerRef} style={{ background: '#fff', position: 'relative' }}>

@@ -68,48 +68,55 @@ function App() {
 
   // 필터링된 그래프 데이터
   const graphData = useMemo(() => {
-    // 1. 노드 필터링
-    let filteredNodes = MOCK_CONCEPTS.map(c => ({ ...c, id: String(c.id) }));
-    
-    if (showOnlySelected) {
-      // 선택된 두 과목과 그에 연결된 개념만 표시
-      const selectedIds = [subjectA, subjectB];
-      const connectedConceptIds = MOCK_LINKS
-        .filter(l => selectedIds.includes(l.source) || selectedIds.includes(l.target))
-        .map(l => selectedIds.includes(l.source) ? l.target : l.source);
+    try {
+      // 1. 노드 필터링
+      let filteredNodes = MOCK_CONCEPTS.map(c => ({ ...c, id: String(c.id) }));
       
-      const allVisibleIds = [...selectedIds, ...connectedConceptIds];
-      filteredNodes = filteredNodes.filter(n => allVisibleIds.includes(n.id));
-    } else {
-      // 학년 필터링 적용 (subject 그룹에만 적용)
-      filteredNodes = filteredNodes.filter(n => {
-        if (n.group === 'subject') {
-          const grade = n.description?.match(/\d/)?.[0];
-          return grade && selectedGrades.includes(grade);
-        }
-        return true; // core-concept은 일단 다 보여줌 (또는 연결된 경우만 보여주도록 로직 확장 가능)
-      });
+      if (showOnlySelected) {
+        // 선택된 두 과목과 그에 연결된 개념만 표시
+        const selectedIds = [subjectA, subjectB];
+        const connectedConceptIds = MOCK_LINKS
+          .filter(l => selectedIds.includes(l.source) || selectedIds.includes(l.target))
+          .map(l => selectedIds.includes(l.source) ? l.target : l.source);
+        
+        const allVisibleIds = [...selectedIds, ...connectedConceptIds];
+        filteredNodes = filteredNodes.filter(n => allVisibleIds.includes(n.id));
+      } else {
+        // 학년 필터링 적용 (subject 그룹에만 적용)
+        filteredNodes = filteredNodes.filter(n => {
+          if (n.group === 'subject') {
+            const grade = n.description?.match(/\d/)?.[0];
+            return grade && selectedGrades.includes(grade);
+          }
+          return true;
+        });
 
-      // 고립된 core-concept 제거 (선택 사항: 과목이 하나도 없는 학년의 개념은 숨김)
-      const visibleSubjectIds = filteredNodes.filter(n => n.group === 'subject').map(n => n.id);
-      const visibleConceptIds = new Set();
-      MOCK_LINKS.forEach(l => {
-        if (visibleSubjectIds.includes(l.source)) visibleConceptIds.add(l.target);
-        if (visibleSubjectIds.includes(l.target)) visibleConceptIds.add(l.source);
-      });
-      
-      filteredNodes = filteredNodes.filter(n => 
-        n.group === 'subject' || visibleConceptIds.has(n.id)
-      );
+        // 고립된 core-concept 제거
+        const visibleSubjectIds = filteredNodes.filter(n => n.group === 'subject').map(n => n.id);
+        const visibleConceptIds = new Set();
+        MOCK_LINKS.forEach(l => {
+          if (visibleSubjectIds.includes(l.source)) visibleConceptIds.add(String(l.target));
+          if (visibleSubjectIds.includes(l.target)) visibleConceptIds.add(String(l.source));
+        });
+        
+        filteredNodes = filteredNodes.filter(n => 
+          n.group === 'subject' || visibleConceptIds.has(n.id)
+        );
+      }
+
+      // 2. 링크 필터링
+      const nodeIds = new Set(filteredNodes.map(n => n.id));
+      const filteredLinks = MOCK_LINKS
+        .filter(l => nodeIds.has(String(l.source)) && nodeIds.has(String(l.target)))
+        .map(l => ({ source: String(l.source), target: String(l.target) }));
+
+      const result = { nodes: filteredNodes, links: filteredLinks };
+      console.log('Graph Data calculated:', result);
+      return result;
+    } catch (err) {
+      console.error('Error calculating graph data:', err);
+      return { nodes: [], links: [] };
     }
-
-    // 2. 링크 필터링
-    const nodeIds = new Set(filteredNodes.map(n => n.id));
-    const filteredLinks = MOCK_LINKS
-      .filter(l => nodeIds.has(String(l.source)) && nodeIds.has(String(l.target)))
-      .map(l => ({ source: String(l.source), target: String(l.target) }));
-
-    return { nodes: filteredNodes, links: filteredLinks };
   }, [selectedGrades, showOnlySelected, subjectA, subjectB]);
 
   return (

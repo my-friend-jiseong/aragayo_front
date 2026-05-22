@@ -107,14 +107,14 @@ function App() {
   // 데이터 변경 시 그래프 중심 맞춤 및 엔진 설정
   useEffect(() => {
     if (fgRef.current) {
-      // 물리 엔진 설정 (일관성을 위해 여기서 한 번만 설정)
-      fgRef.current.d3Force('charge').strength(-5000); // 노드가 커졌으므로 반발력도 더 강화
-      fgRef.current.d3Force('link').distance(300);    // 노드 크기에 맞춰 거리도 확장
+      // 물리 엔진 설정 (노드들이 더 가깝게 뭉치도록 조정)
+      fgRef.current.d3Force('charge').strength(-2500); 
+      fgRef.current.d3Force('link').distance(100);    
       fgRef.current.d3Force('center').strength(0.15);
       
       // 데이터가 바뀌면 약간의 딜레이 후 화면에 맞춤
       setTimeout(() => {
-        fgRef.current.zoomToFit(400, 50); // 패딩을 100에서 50으로 줄여 더 크게 보이게 함
+        fgRef.current.zoomToFit(400, 50); 
       }, 100);
     }
   }, [graphData]);
@@ -202,9 +202,9 @@ function App() {
                   onEngineStop={() => {
                     const fg = fgRef.current;
                     if (fg) {
-                      // 노드 간 반발력 대폭 강화 및 링크 거리 확장
-                      fg.d3Force('charge').strength(-4000);
-                      fg.d3Force('link').distance(250);
+                      // 노드들이 더 가깝게 밀집되도록 엔진 중지 시에도 동일한 설정 유지
+                      fg.d3Force('charge').strength(-2500);
+                      fg.d3Force('link').distance(100);
                       fg.d3Force('center').strength(0.15);
                     }
                   }}

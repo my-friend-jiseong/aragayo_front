@@ -8,10 +8,19 @@ function App() {
   const [subjectA, setSubjectA] = useState('python-programming');
   const [subjectB, setSubjectB] = useState('algorithms');
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [selectedGrades, setSelectedGrades] = useState(['1', '2', '3', '4']);
+  const [showOnlySelected, setShowOnlySelected] = useState(false);
   
   const containerRef = useRef(null);
   const fgRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+
+  // 학년 토글 핸들러
+  const toggleGrade = (grade) => {
+    setSelectedGrades(prev => 
+      prev.includes(grade) ? prev.filter(g => g !== grade) : [...prev, grade]
+    );
+  };
 
   // 줌 변경 핸들러
   const handleZoomChange = (e) => {
@@ -42,11 +51,51 @@ function App() {
     MOCK_CONCEPTS.filter(c => c.group === 'subject'), 
   []);
 
-  // 그래프 데이터 (불변 데이터 구조로 유지하여 충돌 방지)
-  const graphData = useMemo(() => ({
-    nodes: MOCK_CONCEPTS.map(c => ({ ...c, id: String(c.id) })),
-    links: MOCK_LINKS.map(l => ({ source: String(l.source), target: String(l.target) }))
-  }), []);
+  // 필터링된 그래프 데이터
+  const graphData = useMemo(() => {
+    // 1. 노드 필터링
+    let filteredNodes = MOCK_CONCEPTS.map(c => ({ ...c, id: String(c.id) }));
+    
+    if (showOnlySelected) {
+      // 선택된 두 과목과 그에 연결된 개념만 표시
+      const selectedIds = [subjectA, subjectB];
+      const connectedConceptIds = MOCK_LINKS
+        .filter(l => selectedIds.includes(l.source) || selectedIds.includes(l.target))
+        .map(l => selectedIds.includes(l.source) ? l.target : l.source);
+      
+      const allVisibleIds = [...selectedIds, ...connectedConceptIds];
+      filteredNodes = filteredNodes.filter(n => allVisibleIds.includes(n.id));
+    } else {
+      // 학년 필터링 적용 (subject 그룹에만 적용)
+      filteredNodes = filteredNodes.filter(n => {
+        if (n.group === 'subject') {
+          const grade = n.description?.match(/\d/)?.[0];
+          return grade && selectedGrades.includes(grade);
+        }
+        return true; // core-concept은 일단 다 보여줌 (또는 연결된 경우만 보여주도록 로직 확장 가능)
+      });
+
+      // 고립된 core-concept 제거 (선택 사항: 과목이 하나도 없는 학년의 개념은 숨김)
+      const visibleSubjectIds = filteredNodes.filter(n => n.group === 'subject').map(n => n.id);
+      const visibleConceptIds = new Set();
+      MOCK_LINKS.forEach(l => {
+        if (visibleSubjectIds.includes(l.source)) visibleConceptIds.add(l.target);
+        if (visibleSubjectIds.includes(l.target)) visibleConceptIds.add(l.source);
+      });
+      
+      filteredNodes = filteredNodes.filter(n => 
+        n.group === 'subject' || visibleConceptIds.has(n.id)
+      );
+    }
+
+    // 2. 링크 필터링
+    const nodeIds = new Set(filteredNodes.map(n => n.id));
+    const filteredLinks = MOCK_LINKS
+      .filter(l => nodeIds.has(String(l.source)) && nodeIds.has(String(l.target)))
+      .map(l => ({ source: String(l.source), target: String(l.target) }));
+
+    return { nodes: filteredNodes, links: filteredLinks };
+  }, [selectedGrades, showOnlySelected, subjectA, subjectB]);
 
   return (
     <div className="app-container">
@@ -57,6 +106,34 @@ function App() {
             <h1 style={{fontSize: '1.1rem', fontWeight: '800'}}>동아대학교</h1>
             <p style={{fontSize: '0.7rem', color: '#64748b'}}>커리큘럼 헬퍼</p>
           </div>
+        </div>
+
+        <div className="filter-section" style={{marginBottom: '2rem'}}>
+          <h3 style={{fontSize: '0.85rem', fontWeight: '700', color: '#1e293b', marginBottom: '1rem'}}>학년별 필터</h3>
+          <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+            {['1', '2', '3', '4'].map(grade => (
+              <label key={grade} style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer'}}>
+                <input 
+                  type="checkbox" 
+                  checked={selectedGrades.includes(grade)} 
+                  onChange={() => toggleGrade(grade)}
+                  disabled={showOnlySelected}
+                />
+                {grade}학년 과목
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="filter-section" style={{marginBottom: '2rem', padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #bfdbfe'}}>
+          <label style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600', color: '#1d4ed8'}}>
+            <input 
+              type="checkbox" 
+              checked={showOnlySelected} 
+              onChange={(e) => setShowOnlySelected(e.target.checked)} 
+            />
+            선택한 과목만 보기
+          </label>
         </div>
         
         <div style={{marginTop: 'auto', padding: '1rem', background: '#f8fafc', borderRadius: '12px', fontSize: '0.8rem', border: '1px solid #e2e8f0', color: '#64748b'}}>
@@ -105,7 +182,7 @@ function App() {
                     if (fg) {
                       // 노드 간 반발력 대폭 강화 및 링크 거리 확장
                       fg.d3Force('charge').strength(-4000);
-                      fg.d3Force('link').distance(150);
+                      fg.d3Force('link').distance(250);
                       fg.d3Force('center').strength(0.15);
                     }
                   }}

@@ -297,6 +297,81 @@ const CROSS_CUTTING_BLOG_SPECS: Array<{
   // 모바일 ↔ 정보보호
   { id: 'blog-cc-intent-vuln', title: '안드로이드 인텐트와 권한 취약점', keywordIds: ['android-intent', 'vulnerability'] },
   { id: 'blog-cc-lifecycle-perm', title: '생명주기와 권한 모델', keywordIds: ['mobile-lifecycle', 'permissions'] },
+
+  // ── 과목 ↔ 과목 직결 블로그 ──────────────────────────
+  // 키워드끼리만 잇는 다리는 경로가 길어지므로, 과목 키워드 두 개를 직접 함께 다루는
+  // 블로그를 두어 경로 길이를 줄인다.
+
+  // Python ↔ 다른 과목
+  { id: 'blog-bridge-py-algo-1', title: 'Python으로 배우는 알고리즘 입문', keywordIds: ['python-programming', 'algorithms', 'control-flow', 'big-o'] },
+  { id: 'blog-bridge-py-ds-1', title: 'Python으로 구현하는 자료구조', keywordIds: ['python-programming', 'data-structures', 'functions', 'stack-queue'] },
+  { id: 'blog-bridge-py-ml-1', title: 'Python으로 시작하는 머신러닝', keywordIds: ['python-programming', 'machine-learning-course', 'variables', 'regression'] },
+  { id: 'blog-bridge-py-web-1', title: 'Python 백엔드 — Flask로 웹 만들기', keywordIds: ['python-programming', 'web-programming', 'functions', 'async-await'] },
+
+  // Linux ↔ 다른 과목
+  { id: 'blog-bridge-linux-os-1', title: 'Linux로 이해하는 운영체제', keywordIds: ['linux-system', 'operating-systems', 'file-system', 'virtual-memory'] },
+  { id: 'blog-bridge-linux-net-1', title: 'Linux 서버와 네트워크 관리', keywordIds: ['linux-system', 'computer-networks', 'shell-script', 'tcp-udp'] },
+  { id: 'blog-bridge-linux-sec-1', title: 'Linux 시스템 보안', keywordIds: ['linux-system', 'information-security', 'permissions', 'vulnerability'] },
+
+  // 자료구조 ↔ 다른 과목
+  { id: 'blog-bridge-ds-algo-1', title: '자료구조와 알고리즘 — 함께 배우기', keywordIds: ['data-structures', 'algorithms', 'tree-graph', 'dynamic-programming'] },
+  { id: 'blog-bridge-ds-algo-2', title: '효율적 자료구조 선택과 복잡도 분석', keywordIds: ['data-structures', 'algorithms', 'hash-table', 'big-o'] },
+  { id: 'blog-bridge-ds-db-1', title: '자료구조에서 관계형 모델로', keywordIds: ['data-structures', 'database', 'tree-graph', 'relational-model'] },
+  { id: 'blog-bridge-ds-os-1', title: '커널이 사용하는 자료구조', keywordIds: ['data-structures', 'operating-systems', 'stack-queue', 'scheduling'] },
+
+  // 컴퓨터구조 ↔ 다른 과목
+  { id: 'blog-bridge-arch-os-1', title: '컴퓨터 구조와 운영체제 함께 이해하기', keywordIds: ['computer-architecture', 'operating-systems', 'cache-memory', 'virtual-memory'] },
+  { id: 'blog-bridge-arch-compiler-1', title: 'ISA와 컴파일러 백엔드', keywordIds: ['computer-architecture', 'compiler', 'instruction-set', 'code-generation'] },
+
+  // OSS ↔ 다른 과목
+  { id: 'blog-bridge-oss-se-1', title: 'OSS 개발 프로세스와 애자일', keywordIds: ['oss-development', 'software-engineering', 'git-flow', 'agile'] },
+
+  // OOP ↔ 다른 과목
+  { id: 'blog-bridge-oop-web-1', title: '서버 사이드 OOP 설계', keywordIds: ['oop', 'web-programming', 'encapsulation', 'async-await'] },
+  { id: 'blog-bridge-oop-mobile-1', title: '모바일 앱의 객체지향 설계', keywordIds: ['oop', 'mobile-programming', 'interface', 'jetpack-compose'] },
+  { id: 'blog-bridge-oop-se-1', title: 'OOP와 소프트웨어 공학', keywordIds: ['oop', 'software-engineering', 'polymorphism', 'uml'] },
+
+  // 웹 ↔ 다른 과목
+  { id: 'blog-bridge-web-db-1', title: '풀스택 개발 — Web과 DB', keywordIds: ['web-programming', 'database', 'dom-manipulation', 'relational-model'] },
+  { id: 'blog-bridge-web-mobile-1', title: '하이브리드 앱 개발', keywordIds: ['web-programming', 'mobile-programming', 'html-css', 'jetpack-compose'] },
+
+  // DB ↔ 다른 과목
+  { id: 'blog-bridge-db-bigdata-1', title: 'RDB에서 빅데이터로', keywordIds: ['database', 'big-data-analysis', 'normalization', 'spark'] },
+  { id: 'blog-bridge-db-dm-1', title: 'DB에서 시작하는 데이터 마이닝', keywordIds: ['database', 'data-mining', 'relational-model', 'clustering'] },
+
+  // 네트워크 ↔ 다른 과목
+  { id: 'blog-bridge-net-dist-1', title: '네트워크 기반 분산 시스템', keywordIds: ['computer-networks', 'distributed-processing', 'routing', 'rpc-grpc'] },
+  { id: 'blog-bridge-net-sec-1', title: '네트워크 보안 입문', keywordIds: ['computer-networks', 'information-security', 'tcp-udp', 'pki'] },
+
+  // 머신러닝 ↔ 다른 과목
+  { id: 'blog-bridge-ml-algo-1', title: '머신러닝 알고리즘의 복잡도', keywordIds: ['machine-learning-course', 'algorithms', 'decision-tree', 'big-o'] },
+  { id: 'blog-bridge-ml-dl-1', title: '머신러닝에서 딥러닝으로', keywordIds: ['machine-learning-course', 'deep-learning', 'supervised-learning', 'backpropagation'] },
+  { id: 'blog-bridge-ml-dm-1', title: '머신러닝과 데이터 마이닝', keywordIds: ['machine-learning-course', 'data-mining', 'supervised-learning', 'clustering'] },
+
+  // 알고리즘 ↔ 컴파일러
+  { id: 'blog-bridge-algo-compiler-1', title: '컴파일 시 알고리즘', keywordIds: ['algorithms', 'compiler', 'dynamic-programming', 'syntax-tree'] },
+
+  // PL ↔ 컴파일러
+  { id: 'blog-bridge-pl-compiler-1', title: '언어론과 컴파일러', keywordIds: ['programming-languages', 'compiler', 'semantics', 'lexical-analysis'] },
+
+  // OS ↔ 다른 과목
+  { id: 'blog-bridge-os-sec-1', title: 'OS 보안 — 권한과 격리', keywordIds: ['operating-systems', 'information-security', 'virtual-memory', 'firewall'] },
+  { id: 'blog-bridge-os-dist-1', title: 'OS와 분산 시스템', keywordIds: ['operating-systems', 'distributed-processing', 'scheduling', 'load-balancing'] },
+
+  // 그래픽스 ↔ VR
+  { id: 'blog-bridge-gfx-vr-1', title: '그래픽스에서 가상현실로', keywordIds: ['computer-graphics', 'virtual-reality', 'rasterization', 'immersion'] },
+
+  // 딥러닝 ↔ 비전
+  { id: 'blog-bridge-dl-cv-1', title: '딥러닝 기반 컴퓨터 비전', keywordIds: ['deep-learning', 'computer-vision', 'cnn', 'yolo'] },
+
+  // 빅데이터 ↔ 분산
+  { id: 'blog-bridge-bd-dist-1', title: '빅데이터 분산 처리', keywordIds: ['big-data-analysis', 'distributed-processing', 'spark', 'load-balancing'] },
+
+  // 모바일 ↔ 정보보호
+  { id: 'blog-bridge-mobile-sec-1', title: '모바일 보안 가이드', keywordIds: ['mobile-programming', 'information-security', 'mobile-lifecycle', 'vulnerability'] },
+
+  // CV ↔ IP
+  { id: 'blog-bridge-cv-ip-1', title: '컴퓨터 비전과 영상처리', keywordIds: ['computer-vision', 'image-processing', 'feature-extraction', 'filtering'] },
 ];
 
 // ── 자동 생성 ────────────────────────────────────────────────

@@ -8,7 +8,7 @@
 // K → D → K 의 두 간선을 거치는 단위로 본다.
 
 const PATH_LIMIT = 100;   // 탐색 안전 한도
-const DEFAULT_MAX_HOPS = 3; // 최대 키워드 hop 수
+const DEFAULT_MAX_HOPS = 4; // 최대 키워드 hop 수
 
 function buildBipartiteAdjacency(edges) {
   const kwToData = new Map();
@@ -112,4 +112,42 @@ export function computePathHighlight(start, end, edges, maxHops = DEFAULT_MAX_HO
   const paths = findKeywordPaths(start, end, edges, maxHops);
   const sets = pathHighlightSets(paths);
   return { paths, ...sets };
+}
+
+/**
+ * 다중 시작점 → 단일 목표 경로 강조.
+ * 학습 완료된 모든 키워드 각각에서 목표까지의 경로를 합집합으로 산출한다.
+ *
+ * @param {Iterable<string>} sources - 시작 키워드 id들 (학습 완료 노드)
+ * @param {string} target - 목표 키워드 id
+ * @param {Array<{source: string, target: string}>} edges
+ * @param {number} maxHops
+ * @returns {{ paths: string[][], keywords: Set<string>, dataNodes: Set<string>, edges: Set<string> }}
+ */
+export function computeMultiSourcePathHighlight(
+  sources,
+  target,
+  edges,
+  maxHops = DEFAULT_MAX_HOPS
+) {
+  const empty = { paths: [], keywords: new Set(), dataNodes: new Set(), edges: new Set() };
+  if (!target) return empty;
+
+  const sourceArr = [...sources].filter(s => s && s !== target);
+  if (sourceArr.length === 0) return empty;
+
+  // 시작점 각각에서 목표까지의 경로를 모은다. 합산 안전 한도는 PATH_LIMIT * 2.
+  const allPaths = [];
+  const aggregateLimit = PATH_LIMIT * 2;
+  for (const src of sourceArr) {
+    const paths = findKeywordPaths(src, target, edges, maxHops);
+    for (const p of paths) {
+      allPaths.push(p);
+      if (allPaths.length >= aggregateLimit) break;
+    }
+    if (allPaths.length >= aggregateLimit) break;
+  }
+
+  const sets = pathHighlightSets(allPaths);
+  return { paths: allPaths, ...sets };
 }

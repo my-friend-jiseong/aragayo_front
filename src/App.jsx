@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { forceCollide } from 'd3-force';
 import { MOCK_KEYWORDS, MOCK_DATA_NODES, MOCK_EDGES } from './mockData';
-import { computePathHighlight } from './pathSearch';
+import { computeMultiSourcePathHighlight } from './pathSearch';
 import './App.css';
 
 const HIGH_GAT_THRESHOLD = 0.8;
@@ -32,37 +32,39 @@ const STATUS_LABELS = {
 
 function App() {
   const [activeTab, setActiveTab] = useState('map');
-  // 키워드 검색 입력 텍스트. subjectA/B는 텍스트가 유효 키워드 라벨일 때만 유도된다.
-  const [inputA, setInputA] = useState(KEYWORD_LABEL_BY_ID.get('python-programming') ?? '');
-  const [inputB, setInputB] = useState(KEYWORD_LABEL_BY_ID.get('algorithms') ?? '');
+  // 목표 키워드 입력 텍스트. 학습 경로는 "학습 완료" 마킹된 모든 키워드 → 이 목표로 향함.
+  const [inputTarget, setInputTarget] = useState(KEYWORD_LABEL_BY_ID.get('algorithms') ?? '');
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedGrades, setSelectedGrades] = useState(['1', '2', '3', '4']);
   const [showOnlySelected, setShowOnlySelected] = useState(false);
 
-  // 입력 텍스트 → 키워드 id 유도. 매칭 없으면 null.
-  const subjectA = useMemo(
-    () => MOCK_KEYWORDS.find(k => k.label === inputA)?.id ?? null,
-    [inputA]
+  // 입력 텍스트 → 목표 키워드 id 유도. 매칭 없으면 null.
+  const targetId = useMemo(
+    () => MOCK_KEYWORDS.find(k => k.label === inputTarget)?.id ?? null,
+    [inputTarget]
   );
-  const subjectB = useMemo(
-    () => MOCK_KEYWORDS.find(k => k.label === inputB)?.id ?? null,
-    [inputB]
-  );
-
-  // 두 키워드 사이의 경로 + 강조 집합 (전체 그래프 기준으로 산출)
-  const pathData = useMemo(() => {
-    if (!subjectA || !subjectB || subjectA === subjectB) {
-      return { paths: [], keywords: new Set(), dataNodes: new Set(), edges: new Set() };
-    }
-    return computePathHighlight(subjectA, subjectB, MOCK_EDGES, 3);
-  }, [subjectA, subjectB]);
-
-  const hasPath = pathData.paths.length > 0;
-  const showNoPath =
-    !!subjectA && !!subjectB && subjectA !== subjectB && pathData.paths.length === 0;
 
   // P2: 학습 상태 마킹. 세션 메모리(state)에만 보관. (FEATURE_NODE_STATUS.md §2.4)
   const [nodeStatusMap, setNodeStatusMap] = useState({});
+
+  // 학습 완료 키워드 = 경로 탐색의 시작점들
+  const completedSourceIds = useMemo(
+    () => Object.keys(nodeStatusMap).filter(id => nodeStatusMap[id] === 'completed'),
+    [nodeStatusMap]
+  );
+
+  // 완료 시작점들 → 목표로 향하는 경로 합집합
+  const pathData = useMemo(() => {
+    if (!targetId || completedSourceIds.length === 0) {
+      return { paths: [], keywords: new Set(), dataNodes: new Set(), edges: new Set() };
+    }
+    return computeMultiSourcePathHighlight(completedSourceIds, targetId, MOCK_EDGES, 4);
+  }, [completedSourceIds, targetId]);
+
+  const hasPath = pathData.paths.length > 0;
+  // 안내 배너 분기: 목표만 있고 완료 노드가 없는 초기 상태 / 완료가 있어도 경로 없는 상태
+  const noCompletedYet = !!targetId && completedSourceIds.length === 0;
+  const showNoPath = !!targetId && completedSourceIds.length > 0 && pathData.paths.length === 0;
   const setStatus = (id, status) => {
     setNodeStatusMap(prev => {
       const next = { ...prev };
@@ -80,26 +82,24 @@ function App() {
   );
 
   // P3: 내 커리큘럼 (FEATURE_MY_CURRICULUM.md)
-  //  - 저장 단위: A, B + 경로상 중간 키워드 ID 스냅샷 + 이름 + 메모 + 생성시각
+  //  - 저장 단위: 목표 키워드 + 저장 시점 완료 키워드 스냅샷 + 이름 + 메모 + 생성시각
   //  - 세션 메모리 (새로고침 시 초기화)
   const [curriculumStore, setCurriculumStore] = useState([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [saveMemo, setSaveMemo] = useState('');
 
-  const canSaveCurriculum = !!subjectA && !!subjectB && subjectA !== subjectB && hasPath;
+  // 저장 가능 조건: 목표가 유효 + 완료 노드 ≥1 + 경로 ≥1
+  const canSaveCurriculum = !!targetId && completedSourceIds.length > 0 && hasPath;
 
   const saveCurriculum = () => {
     if (!canSaveCurriculum || !saveName.trim()) return;
-    // 경로상 키워드 중 시작/종점 제외한 것들이 중간 키워드 스냅샷
-    const intermediates = [...pathData.keywords].filter(
-      id => id !== subjectA && id !== subjectB
-    );
     const entry = {
       id: `cur-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: saveName.trim(),
       memo: saveMemo.trim() || undefined,
-      path: { a: subjectA, b: subjectB, intermediates },
+      target: targetId,
+      completedSnapshot: completedSourceIds.slice(), // 저장 시점 완료 키워드 ID 배열
       createdAt: new Date().toISOString(),
     };
     setCurriculumStore(prev => [...prev, entry]);
@@ -109,10 +109,19 @@ function App() {
   };
 
   const loadCurriculum = (entry) => {
-    const aLabel = KEYWORD_LABEL_BY_ID.get(entry.path.a);
-    const bLabel = KEYWORD_LABEL_BY_ID.get(entry.path.b);
-    if (aLabel) setInputA(aLabel);
-    if (bLabel) setInputB(bLabel);
+    // 목표 입력 복원
+    const tLabel = KEYWORD_LABEL_BY_ID.get(entry.target);
+    if (tLabel) setInputTarget(tLabel);
+    // 완료 스냅샷의 키워드들을 completed로 마킹 (기존 다른 상태는 보존)
+    if (Array.isArray(entry.completedSnapshot)) {
+      setNodeStatusMap(prev => {
+        const next = { ...prev };
+        for (const id of entry.completedSnapshot) {
+          next[id] = 'completed';
+        }
+        return next;
+      });
+    }
   };
 
   const deleteCurriculum = (id) => {
@@ -121,10 +130,8 @@ function App() {
 
   const openSaveModal = () => {
     if (!canSaveCurriculum) return;
-    // 기본 이름 제안: "A → B"
-    const aLabel = KEYWORD_LABEL_BY_ID.get(subjectA) ?? '';
-    const bLabel = KEYWORD_LABEL_BY_ID.get(subjectB) ?? '';
-    setSaveName(`${aLabel} → ${bLabel}`);
+    const tLabel = KEYWORD_LABEL_BY_ID.get(targetId) ?? '';
+    setSaveName(`${tLabel} 학습 경로`);
     setSaveMemo('');
     setShowSaveModal(true);
   };
@@ -152,16 +159,17 @@ function App() {
   // 필터링된 그래프 데이터.
   // docs/GRAPH_ARCHITECTURE.md §2.1에 따라 키워드/데이터 노드 두 타입을 모두 렌더링하고,
   // 간선은 데이터 노드 → 키워드 단방향으로만 둔다. 키워드 간 직접 간선은 만들지 않는다.
-  // subjectA/B는 showOnlySelected=true일 때만 데이터에 영향하므로 selectionKey로 묶어
-  // 일반 보기 중 과목 선택만 바뀔 때 시뮬레이션이 리셋되지 않도록 한다.
-  const selectionKey = showOnlySelected ? `${subjectA ?? ''}|${subjectB ?? ''}` : 'all';
+  // 목표 키워드 + 완료 시작점이 showOnlySelected 모드의 seed가 된다. 일반 보기에서는 영향 없음.
+  const selectionKey = showOnlySelected
+    ? `${targetId ?? ''}|${completedSourceIds.join(',')}`
+    : 'all';
   const graphData = useMemo(() => {
     try {
       // 1) 가시 키워드 집합 결정
       let visibleKeywordIds;
       if (showOnlySelected) {
-        // 선택한 두 키워드(유효한 것만) + 그 키워드를 만지는 데이터 노드를 통해 닿는 키워드들
-        const seeds = [subjectA, subjectB].filter(Boolean);
+        // 목표 + 완료 시작점들 + 그들을 만지는 데이터 노드를 통해 닿는 키워드들
+        const seeds = [targetId, ...completedSourceIds].filter(Boolean);
         visibleKeywordIds = new Set(seeds);
         const dataTouchingSelected = new Set();
         MOCK_EDGES.forEach(e => {
@@ -231,7 +239,7 @@ function App() {
       console.error('Error calculating graph data:', err);
       return { nodes: [], links: [] };
     }
-    // selectionKey가 subjectA/B 의존성을 showOnlySelected=true일 때만 반영함
+    // selectionKey가 targetId/completedSourceIds 의존성을 showOnlySelected=true일 때만 반영함
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGrades, showOnlySelected, selectionKey]);
 
@@ -302,7 +310,7 @@ function App() {
           >
             <h2 style={{fontSize: '1.15rem', fontWeight: 800, marginBottom: '0.25rem', color: '#0f172a'}}>커리큘럼 저장</h2>
             <p style={{fontSize: '0.8rem', color: '#64748b', marginBottom: '1.25rem'}}>
-              현재 경로(<b>{KEYWORD_LABEL_BY_ID.get(subjectA)}</b> → <b>{KEYWORD_LABEL_BY_ID.get(subjectB)}</b>)를 저장합니다.
+              목표 <b>{KEYWORD_LABEL_BY_ID.get(targetId)}</b>, 현재 완료 노드 {completedSourceIds.length}개의 스냅샷을 저장합니다.
             </p>
             <label style={{display: 'block', marginBottom: '0.85rem'}}>
               <div style={{fontSize: '0.75rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px'}}>이름</div>
@@ -403,13 +411,13 @@ function App() {
               fontSize: '0.75rem', color: '#94a3b8', border: '1px dashed #e2e8f0',
               lineHeight: 1.5,
             }}>
-              저장된 커리큘럼이 없습니다. 두 키워드를 선택해 경로가 활성화된 상태에서 <b>"+ 커리큘럼 저장"</b>으로 보관할 수 있습니다.
+              저장된 커리큘럼이 없습니다. 목표 키워드 선택 + 완료 마킹된 노드가 있을 때 <b>"+ 커리큘럼 저장"</b>으로 보관할 수 있습니다.
             </div>
           ) : (
             <div style={{display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', flex: 1}}>
               {curriculumStore.map(entry => {
-                const aLabel = KEYWORD_LABEL_BY_ID.get(entry.path.a) ?? entry.path.a;
-                const bLabel = KEYWORD_LABEL_BY_ID.get(entry.path.b) ?? entry.path.b;
+                const tLabel = KEYWORD_LABEL_BY_ID.get(entry.target) ?? entry.target;
+                const snapshotCount = Array.isArray(entry.completedSnapshot) ? entry.completedSnapshot.length : 0;
                 return (
                   <div
                     key={entry.id}
@@ -427,7 +435,7 @@ function App() {
                           fontSize: '0.82rem', fontWeight: 700, color: '#1e293b',
                           textAlign: 'left', cursor: 'pointer', flex: 1,
                         }}
-                        title="클릭하여 이 커리큘럼 불러오기"
+                        title="클릭하여 이 커리큘럼 불러오기 (목표와 완료 스냅샷 복원)"
                       >{entry.name}</button>
                       <button
                         onClick={() => deleteCurriculum(entry.id)}
@@ -440,7 +448,7 @@ function App() {
                       >×</button>
                     </div>
                     <div style={{fontSize: '0.7rem', color: '#64748b'}}>
-                      {aLabel} → {bLabel}
+                      🎯 {tLabel} · 완료 {snapshotCount}개
                     </div>
                     {entry.memo && (
                       <div style={{
@@ -461,24 +469,15 @@ function App() {
       <main className="main-content">
         <header className="header">
           <div className="search-controls">
+            <span style={{fontSize: '0.85rem', fontWeight: 700, color: '#475569'}}>🎯 목표</span>
             <input
               type="text"
               className="search-select"
               list="kw-list"
-              value={inputA}
-              onChange={(e) => setInputA(e.target.value)}
-              placeholder="키워드 검색..."
-              style={{ minWidth: '180px' }}
-            />
-            <span>→</span>
-            <input
-              type="text"
-              className="search-select"
-              list="kw-list"
-              value={inputB}
-              onChange={(e) => setInputB(e.target.value)}
-              placeholder="키워드 검색..."
-              style={{ minWidth: '180px' }}
+              value={inputTarget}
+              onChange={(e) => setInputTarget(e.target.value)}
+              placeholder="목표 키워드 검색..."
+              style={{ minWidth: '220px' }}
             />
             <datalist id="kw-list">
               {MOCK_KEYWORDS.map(k => (
@@ -495,7 +494,11 @@ function App() {
                 cursor: canSaveCurriculum ? 'pointer' : 'not-allowed',
                 background: '#10b981',
               }}
-              title={canSaveCurriculum ? '현재 경로를 내 커리큘럼에 저장' : '두 키워드 사이 경로가 있어야 저장 가능합니다'}
+              title={
+                canSaveCurriculum
+                  ? '현재 목표와 완료 스냅샷을 내 커리큘럼에 저장'
+                  : '목표 키워드와 완료 마킹된 노드, 경로가 모두 있어야 저장 가능합니다'
+              }
             >
               + 커리큘럼 저장
             </button>
@@ -510,24 +513,28 @@ function App() {
           </div>
 
           <div className="tab-panel" ref={containerRef} style={{ background: '#fff', position: 'relative' }}>
-            {activeTab === 'map' && showNoPath && (
+            {activeTab === 'map' && (showNoPath || noCompletedYet) && (
               <div style={{
                 position: 'absolute',
                 top: '20px',
                 left: '50%',
                 transform: 'translateX(-50%)',
-                background: '#fef3c7',
-                color: '#92400e',
+                background: noCompletedYet ? '#dbeafe' : '#fef3c7',
+                color: noCompletedYet ? '#1e40af' : '#92400e',
                 padding: '0.75rem 1.5rem',
                 borderRadius: '12px',
-                border: '1px solid #fcd34d',
+                border: `1px solid ${noCompletedYet ? '#93c5fd' : '#fcd34d'}`,
                 fontSize: '0.85rem',
                 fontWeight: '600',
                 zIndex: 10,
                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                 pointerEvents: 'none',
+                maxWidth: '90%',
+                textAlign: 'center',
               }}>
-                관련 없는 키워드입니다 — 선택한 두 키워드 사이에 경로가 없습니다.
+                {noCompletedYet
+                  ? '키워드를 "학습 완료"로 마킹하면 그 노드에서 목표까지의 경로가 표시됩니다.'
+                  : '학습 완료된 노드 중에서 이 목표로 가는 경로가 없습니다.'}
               </div>
             )}
             {activeTab === 'map' ? (
@@ -543,8 +550,8 @@ function App() {
                     // 실제 렌더링 크기와 일치시켜야 화살표가 노드에 가려지지 않는다.
                     // (반경 = nodeRelSize * sqrt(nodeVal) → nodeVal = (size/nodeRelSize)^2)
                     if (node.nodeType === 'dataNode') return Math.pow(7 / 6, 2);
-                    const isSelected = node.id === subjectA || node.id === subjectB;
-                    if (isSelected) return Math.pow(24 / 6, 2);
+                    const isTarget = node.id === targetId;
+                    if (isTarget) return Math.pow(24 / 6, 2);
                     const isSubject = node.source === 'subject';
                     const gat = typeof node.gatScore === 'number' ? node.gatScore : 0.5;
                     const sizeMul = 0.7 + 0.6 * gat;
@@ -594,13 +601,13 @@ function App() {
                     // 경로 강조: 경로 위 노드는 정상 표시, 그 외는 dim 처리.
                     const isOnPathKw = hasPath && pathData.keywords.has(node.id);
                     const isOnPathDn = hasPath && pathData.dataNodes.has(node.id);
-                    const isSelected = node.id === subjectA || node.id === subjectB;
+                    const isTarget = node.id === targetId;
                     const isPanelOpen = node.id === panelNodeId;
                     const status = node.nodeType === 'keyword' ? nodeStatusMap[node.id] : null;
-                    const shouldDim = hasPath && !isOnPathKw && !isOnPathDn && !isSelected;
-                    // P2 §2.5: 경로 위 완료 키워드는 추가 약화 (엔드포인트 제외)
+                    const shouldDim = hasPath && !isOnPathKw && !isOnPathDn && !isTarget;
+                    // P2 §2.5: 경로 위 완료 키워드는 추가 약화 (목표 제외)
                     const completedOnPath =
-                      hasPath && status === 'completed' && !isSelected && (isOnPathKw || isOnPathDn);
+                      hasPath && status === 'completed' && !isTarget && (isOnPathKw || isOnPathDn);
                     const prevAlpha = ctx.globalAlpha;
                     if (shouldDim) ctx.globalAlpha = 0.15;
                     else if (completedOnPath) ctx.globalAlpha = 0.4;
@@ -651,22 +658,22 @@ function App() {
                     // ── 키워드 노드: 원 + GAT 가중치 기반 크기 ─────
                     const isSubject = node.source === 'subject';
                     const gat = typeof node.gatScore === 'number' ? node.gatScore : 0.5;
-                    // GAT 가중치 → 크기 배수 (0.7x ~ 1.3x). 엔드포인트는 고정 크기.
+                    // GAT 가중치 → 크기 배수 (0.7x ~ 1.3x). 목표는 고정 크기.
                     const sizeMul = 0.7 + 0.6 * gat;
                     const baseSize = isSubject ? 16 : 10;
-                    const size = isSelected ? 24 : baseSize * sizeMul;
-                    // 색상 우선순위: endpoint(red) > 상태(green/orange/violet) > 기본(blue/gray)
+                    const size = isTarget ? 24 : baseSize * sizeMul;
+                    // 색상 우선순위: 목표(red) > 상태(green/orange/violet) > 기본(blue/gray)
                     let color;
-                    if (isSelected) color = '#ef4444';
+                    if (isTarget) color = '#ef4444';
                     else if (status) color = STATUS_COLORS[status];
                     else color = isSubject ? '#2563eb' : '#94a3b8';
 
-                    // 후광: A/B 엔드포인트 또는 경로 위 고-GAT 키워드 (>= 0.8)
-                    const showHalo = isSelected || (isOnPathKw && gat >= HIGH_GAT_THRESHOLD);
+                    // 후광: 목표 키워드 또는 경로 위 고-GAT 키워드 (>= 0.8)
+                    const showHalo = isTarget || (isOnPathKw && gat >= HIGH_GAT_THRESHOLD);
                     if (showHalo) {
                       ctx.beginPath();
                       ctx.arc(node.x, node.y, size + 6/globalScale, 0, 2 * Math.PI, false);
-                      ctx.fillStyle = isSelected
+                      ctx.fillStyle = isTarget
                         ? 'rgba(239, 68, 68, 0.15)'
                         : 'rgba(37, 99, 235, 0.18)';
                       ctx.fill();
@@ -679,7 +686,7 @@ function App() {
 
                     // 사이드 패널이 열린 노드는 청록 테두리로 표시
                     ctx.strokeStyle = isPanelOpen ? '#0ea5e9' : '#ffffff';
-                    ctx.lineWidth = (isSelected ? 3 : isPanelOpen ? 2.5 : 1.5) / globalScale;
+                    ctx.lineWidth = (isTarget ? 3 : isPanelOpen ? 2.5 : 1.5) / globalScale;
                     ctx.stroke();
 
                     // 학습 상태 아이콘 (마킹된 키워드에 한해)
@@ -692,9 +699,9 @@ function App() {
                     }
 
                     const isZoomedEnough = globalScale >= 0.8;
-                    if (isZoomedEnough || isSelected) {
-                      const fontSize = (isSelected ? 18 : 14) / globalScale;
-                      ctx.font = `${isSelected ? '800' : '600'} ${fontSize}px 'Pretendard', sans-serif`;
+                    if (isZoomedEnough || isTarget) {
+                      const fontSize = (isTarget ? 18 : 14) / globalScale;
+                      ctx.font = `${isTarget ? '800' : '600'} ${fontSize}px 'Pretendard', sans-serif`;
                       ctx.textAlign = 'center';
                       ctx.textBaseline = 'top';
 
@@ -710,7 +717,7 @@ function App() {
                         fontSize + bckgPadding
                       );
 
-                      ctx.fillStyle = isSelected ? '#ef4444' : '#1e293b';
+                      ctx.fillStyle = isTarget ? '#ef4444' : '#1e293b';
                       ctx.fillText(labelText, node.x, node.y + size + bckgPadding * 2);
                     }
 
